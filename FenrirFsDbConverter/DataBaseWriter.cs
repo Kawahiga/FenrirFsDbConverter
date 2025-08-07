@@ -14,7 +14,7 @@ namespace FenrirFsDbConverter {
         private readonly string _dbPath;
         
         // 書き込み進捗の表示用
-        private int totalFiles;
+        private int totalItems;
         private int lastPercentage;
 
         public DataBaseWriter( string dbPath ) {
@@ -62,26 +62,20 @@ namespace FenrirFsDbConverter {
                     PRIMARY KEY (VideoId, TagId)
                 );
             ";
-            // エンハンス案：関連づいたIDが削除された場合に、関連する行も削除するためのON DELETE CASCADEを設定
-            // FOREIGN KEY (VideoId) REFERENCES Videos(FileID) ON DELETE CASCADE,
-            // FOREIGN KEY(TagId) REFERENCES Tags(TagID) ON DELETE CASCADE,
-
             command.ExecuteNonQuery();
         }
 
-
         // / ファイル情報を変換後の形式でDBに保存する
         public void SaveFiles( List<NewFile> files ) {
-            // TODO: DBに接続し、変換後のファイル情報を書き込む
             Console.WriteLine( "Writing file data to destination DB..." );
 
             try {
                 using var connection = new SqliteConnection($"Data Source={_dbPath}");
                 connection.Open();
 
-                totalFiles = files.Count;
+                totalItems = files.Count;
                 lastPercentage = -1;
-                int processedFiles = 0;
+                int processedItems = 0;
                 foreach ( var video in files ) {
                     var command = connection.CreateCommand();
                     command.CommandText = @"
@@ -103,35 +97,65 @@ namespace FenrirFsDbConverter {
                     command.ExecuteNonQuery();
 
                     // 進捗状況を表示
-                    DisplayProgress( ++processedFiles);
+                    DisplayProgress( ++processedItems);
                 }
-                Console.WriteLine("File data written successfully.");
             }
             catch ( Exception ex ) {
-                Console.WriteLine( $"Error reading files from FenrirFS DB: {ex.Message}" );
+                Console.WriteLine( $"Error writing file data to destination DB: {ex.Message}" );
             }
         }
 
-        // ラベル情報を変換後の形式でDBに保存する
-        public void SaveLabels( List<object> labels ) {
-            // TODO: DBに接続し、変換後のカテゴリ情報を書き込む
-            Console.WriteLine( "Writing label data to destination DB..." );
+        // タグ情報を変換後の形式でDBに保存する
+        public void SaveTags( List<NewTag> tags ) {
+            Console.WriteLine( "Writing tag data to destination DB..." );
+
+            try {
+                using var connection = new SqliteConnection($"Data Source={_dbPath}");
+                connection.Open();
+
+                totalItems = tags.Count;
+                lastPercentage = -1;
+                int processedItems = 0;
+
+                foreach (var tag in tags) {
+                    var command = connection.CreateCommand();
+                    command.CommandText = @"
+                        INSERT OR IGNORE INTO Tags 
+                        (TagName, TagColor, Parent, OrderInGroup, IsGroup) 
+                        VALUES 
+                        ($tagName, $tagColor, $parent, $orderInGroup, $isGroup)";
+
+                    command.Parameters.AddWithValue("$tagName", tag.TagName);
+                    command.Parameters.AddWithValue("$tagColor", tag.TagColor ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("$parent", tag.Parent ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("$orderInGroup", tag.OrderInGroup ?? 0);
+                    command.Parameters.AddWithValue("$isGroup", tag.IsGroup ?? 0);
+
+                    command.ExecuteNonQuery();
+
+                    DisplayProgress(++processedItems);
+                }
+            }
+            catch (Exception ex) {
+                Console.WriteLine($"Error writing tag data to destination DB: {ex.Message}");
+            }
         }
 
         // DB保存の進捗状況を表示する
         private void DisplayProgress( int processed ) {
-            int currentPercentage = (int)((double)processed / totalFiles * 100);
+            int currentPercentage = (int)((double)processed / totalItems * 100);
 
-            if ( processed == 0 ) {
+            if ( processed == 1 ) {
                 Console.Write( "\n" );
             }
 
             if ( currentPercentage != lastPercentage ) {
-                Console.Write( $"\rProgress: {currentPercentage}% ({processed}/{totalFiles})" );
+                Console.Write( $"Progress: {currentPercentage}% ({processed}/{totalItems})" );
+                
                 lastPercentage = currentPercentage;
             }
 
-            if ( processed == totalFiles ) {
+            if ( processed == totalItems ) {
                 Console.Write( "\n" );
             }
         }

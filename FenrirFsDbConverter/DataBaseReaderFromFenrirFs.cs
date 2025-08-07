@@ -114,7 +114,7 @@ namespace FenrirFsDbConverter {
                 var command = connection.CreateCommand();
                 command.CommandText = @"
                     SELECT LabelGroupID, LabelGroupName, OrderInList, ParentGroupId
-                    FROM labelgroups";
+                    FROM labelgroup";
 
                 using var reader = command.ExecuteReader();
                 while ( reader.Read() ) {
@@ -122,7 +122,7 @@ namespace FenrirFsDbConverter {
                         LabelGroupID = reader.IsDBNull(0) ? (int?)null : reader.GetInt32(0),
                         LabelGroupName = reader.IsDBNull(1) ? null : reader.GetString(1),
                         OrderInList = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2),
-                        ParentGroupId = reader.IsDBNull(10) ? (int?)null : reader.GetInt32(4)
+                        ParentGroupId = reader.IsDBNull(3) ? (int?)null : reader.GetInt32(3)
                     };
                     labelGroups.Add( labelGroup );
                 }

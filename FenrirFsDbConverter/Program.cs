@@ -19,7 +19,7 @@ public class Program {
         var reader = new DataBaseReaderFromFenrirFs(fenrirDbPath);
         var fenrirFiles = reader.ReadFiles();
         var fenrirLabels = reader.ReadLabels();
-        //var fenrirLabelGroups = reader.ReadLabelGroups();
+        var fenrirLabelGroups = reader.ReadLabelGroups();
         //var fenrirLabeledFiles = reader.ReadAllTagsLabeledFiles();
         //var fenrirFilters = reader.ReadAllFilters();
         // ... 他のデータも同様に読み込む
@@ -27,13 +27,13 @@ public class Program {
         // 2. データを新しい形式に変換する
         var converter = new DataConverter( hardCodePath );
         var newAppFiles = converter.ConvertFiles(fenrirFiles);
-        //var newAppTags = converter.ConvertTags(fenrirLabels, fenrirLabelGroups);
+        var newAppTags = converter.ConvertTags(fenrirLabels, fenrirLabelGroups);
         // ...
 
         // 3. 新しいDBにデータを書き込む
         var writer = new DataBaseWriter(destinationDbPath);
         writer.SaveFiles( newAppFiles );
-        //writer.SaveCategories( newAppCategories );
+        writer.SaveTags( newAppTags );
         // ...
 
         Console.WriteLine( "Conversion completed successfully!" );
