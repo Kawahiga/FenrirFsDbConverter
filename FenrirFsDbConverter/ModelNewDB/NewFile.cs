@@ -13,5 +13,6 @@ namespace FenrirFsDbConverter.ModelNewDB {
         public long FileSize { get; set; }  // ファイルサイズ（バイト単位）
         public DateTime LastModified { get; set; }  // 最終更新日時（YYYY/MM/dd HH:mm:ss形式）
         public double Duration { get; set; }    // 動画の再生時間（秒）
+        public string? Extension { get; set; } // ファイルの拡張子（小文字）
     }
 }

@@ -29,7 +29,7 @@ namespace FenrirFsDbConverter {
 
                 var command = connection.CreateCommand();
                 command.CommandText = @"
-                    SELECT FileID, AliasTarget, DisplayFileName, FileSize, LastWriteDate, LastWriteTime, MediaDuration
+                    SELECT FileID, AliasTarget, DisplayFileName, FileSize, LastWriteDate, LastWriteTime, MediaDuration, Extension
                     FROM files";
 
                 using var reader = command.ExecuteReader();
@@ -41,6 +41,7 @@ namespace FenrirFsDbConverter {
                     var lastModifiedDate = reader.GetString(4);
                     var lastModifiedTime = reader.GetString(5);
                     var mediaDuration = reader.GetInt64(6);
+                    var extension = reader.GetString(7);
 
                     var video = new FenrirFile {
                         FileID = id,
@@ -50,6 +51,7 @@ namespace FenrirFsDbConverter {
                         LastWriteDate = lastModifiedDate,
                         LastWriteTime = lastModifiedTime,
                         MediaDuration = mediaDuration,
+                        Extension = extension
                     };
                     videos.Add( video );
                 }

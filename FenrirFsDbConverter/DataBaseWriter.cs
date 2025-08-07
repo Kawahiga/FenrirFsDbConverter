@@ -12,7 +12,8 @@ namespace FenrirFsDbConverter {
     internal class DataBaseWriter {
 
         private readonly string _dbPath;
-        private SqliteConnection? connection;
+        
+        // 書き込み進捗の表示用
         private int totalFiles;
         private int lastPercentage;
 
@@ -29,10 +30,15 @@ namespace FenrirFsDbConverter {
 
             command.CommandText =
             @"
+                DROP TABLE IF EXISTS Videos;
+                DROP TABLE IF EXISTS Tags;
+                DROP TABLE IF EXISTS VideoTags;
+
                 CREATE TABLE IF NOT EXISTS Videos (
                     FileID INTEGER PRIMARY KEY AUTOINCREMENT,
                     FilePath TEXT NOT NULL UNIQUE,
                     FileName TEXT NOT NULL,
+                    Extension TEXT DEFAULT '',
                     FileSize INTEGER DEFAULT 0,
                     LastModified TEXT,
                     Duration REAL DeFAULT 0.0
@@ -80,13 +86,14 @@ namespace FenrirFsDbConverter {
                     var command = connection.CreateCommand();
                     command.CommandText = @"
                         INSERT OR IGNORE INTO Videos 
-                        (FilePath, FileName, FileSize, LastModified, Duration) 
+                        (FilePath, FileName, Extension, FileSize, LastModified, Duration) 
                         VALUES 
-                        ($filePath, $fileName, $fileSize, $lastModified, $duration)";
+                        ($filePath, $fileName, $extension, $fileSize, $lastModified, $duration)";
 
 
                     command.Parameters.AddWithValue( "$filePath", video.FilePath );
                     command.Parameters.AddWithValue( "$fileName", video.FileName );
+                    command.Parameters.AddWithValue( "$extension", video.Extension ?? string.Empty );
                     command.Parameters.AddWithValue( "$fileSize", video.FileSize );
                     // 日付は環境に依存しないISO 8601形式("o")で保存する
                     command.Parameters.AddWithValue( "$lastModified", video.LastModified.ToString( "o" ) );
