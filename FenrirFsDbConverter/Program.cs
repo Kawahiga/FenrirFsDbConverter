@@ -1,4 +1,6 @@
 ﻿using FenrirFsDbConverter;
+using Microsoft.Data.Sqlite;
+using SQLitePCL;
 using System;
 using System.Collections.Generic;
 
@@ -7,13 +9,14 @@ public class Program {
     public static void Main( string[] args ) {
         Console.WriteLine( "FenrirFS DB Converter started." );
 
+        
         // TODO: コマンドライン引数や設定ファイルからDBのパスなどを取得する
         // 【暫定処理】パスをハードコーディング
         string fenrirDbPath = @"C:\Users\kawahigashi\Desktop\えっち.db";
         //string destinationDbPath = @"C:\Users\kawahigashi\Desktop\newDB.db";
 
         // 1. FenrirFSからデータを読み込む
-        var reader = new DateBaseReaderFromFenrirFs(fenrirDbPath);
+        var reader = new DataBaseReaderFromFenrirFs(fenrirDbPath);
         var fenrirFiles = reader.ReadFiles();
         //var fenrirLabels = reader.ReadAllLabels();
         //var fenrirLabelGroups = reader.ReadAllLabelGroups();
