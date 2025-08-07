@@ -66,7 +66,7 @@ namespace FenrirFsDbConverter {
             command.ExecuteNonQuery();
         }
 
-        // / ファイル情報を変換後の形式でDBに保存する
+        // ファイル情報を変換後の形式でDBに保存する
         public void SaveFiles( List<NewFile> files ) {
             Console.WriteLine( "Writing file data to destination DB..." );
 
@@ -78,6 +78,9 @@ namespace FenrirFsDbConverter {
                 lastPercentage = -1;
                 int processedItems = 0;
                 foreach ( var video in files ) {
+                    // 進捗状況を表示
+                    DisplayProgress( ++processedItems );
+
                     var command = connection.CreateCommand();
                     command.CommandText = @"
                         INSERT OR IGNORE INTO Videos 
@@ -93,12 +96,23 @@ namespace FenrirFsDbConverter {
                     // 日付は環境に依存しないISO 8601形式("o")で保存する
                     command.Parameters.AddWithValue( "$lastModified", video.LastModified.ToString( "o" ) );
                     command.Parameters.AddWithValue( "$duration", video.Duration );
-                    
-                    // コマンドを実行
-                    command.ExecuteNonQuery();
 
-                    // 進捗状況を表示
-                    DisplayProgress( ++processedItems);
+                    // コマンドを実行
+                    var rowsAffected = command.ExecuteNonQuery();
+
+                    // DB更新後のIDを取得
+                    if ( rowsAffected > 0 ) {
+                        // 行が新規に挿入された
+                        command.CommandText = "SELECT last_insert_rowid()";
+                        command.Parameters.Clear();
+                        video.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
+                    } else {
+                        // 行が新規に挿入されなかった
+                        command.CommandText = "SELECT FileID FROM Videos WHERE FilePath = $filePath";
+                        command.Parameters.Clear();
+                        command.Parameters.AddWithValue( "$filePath", video.FilePath );
+                        video.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
+                    }
                 }
             }
             catch ( Exception ex ) {
@@ -119,6 +133,9 @@ namespace FenrirFsDbConverter {
                 int processedItems = 0;
 
                 foreach (var tag in tags) {
+                    // 進捗状況を表示
+                    DisplayProgress( ++processedItems );
+
                     var command = connection.CreateCommand();
                     command.CommandText = @"
                         INSERT OR IGNORE INTO Tags 
@@ -133,13 +150,38 @@ namespace FenrirFsDbConverter {
                     command.Parameters.AddWithValue("$isGroup", tag.IsGroup ?? 0);
                     command.Parameters.AddWithValue("$isExpand", tag.IsExpanded ?? 0);
 
-                    command.ExecuteNonQuery();
+                    // コマンドを実行
+                    var rowsAffected = command.ExecuteNonQuery();
 
-                    DisplayProgress(++processedItems);
+                    // DB更新後のIDを取得
+                    if ( rowsAffected > 0 ) {
+                        // 行が新規に挿入された
+                        command.CommandText = "SELECT last_insert_rowid()";
+                        command.Parameters.Clear();
+                        tag.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
+                    } else {
+                        // 行が新規に挿入されなかった
+                        command.CommandText = "SELECT FileID FROM Videos WHERE TagName = $tagName";
+                        command.Parameters.Clear();
+                        command.Parameters.AddWithValue( "$tagName", tag.TagName );
+                        tag.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
+                    }
                 }
             }
             catch (Exception ex) {
                 Console.WriteLine($"Error writing tag data to destination DB: {ex.Message}");
+            }
+        }
+
+        // ビデオとタグの関連情報をDBに保存する
+        public void SaveVideoTags( List<NewVideoTag> videoTags, List<NewFile> files, List<NewTag> tags ) {
+            Console.WriteLine( "Writing video tag data to destination DB..." );
+            try {
+                // ファイルとタグの新旧IDを対応させる
+
+            }
+            catch ( Exception ex ) {
+                Console.WriteLine( $"Error writing video tag data to destination DB: {ex.Message}" );
             }
         }
 

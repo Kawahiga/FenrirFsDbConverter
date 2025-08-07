@@ -8,6 +8,6 @@ namespace FenrirFsDbConverter.ModelNewDB {
     internal class NewVideoTag {
 
         public int VideoId { get; set; }
-        public int Taid { get; set; }
+        public int TagId { get; set; }
     }
 }

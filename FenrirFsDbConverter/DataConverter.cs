@@ -19,7 +19,6 @@ namespace FenrirFsDbConverter {
 
         // FenrirFSのデータを新しいアプリケーションの形式に変換する
         public List<NewFile> ConvertFiles( List<FenrirFile> fenrirFiles ) {
-            // TODO: FenrirFileのリストをNewAppFileのリストに変換するロジックを実装
             Console.WriteLine( "Converting file data..." );
             var newFiles = new List<NewFile>();
 
@@ -119,12 +118,6 @@ namespace FenrirFsDbConverter {
 
             // すべてのタグ（グループとラベル）の親子関係を更新します
             foreach ( var tag in newTags ) {
-                // IDがまだ割り当てられていない場合は、新しいIDを割り当てます（ラベルの場合）
-                if ( tag.TagId == null ) {
-                    tag.TagId = nextId;
-                    nextId++;
-                }
-
                 // 親IDが設定されている場合、新しいIDに変換します
                 if ( tag.Parent.HasValue && oldIdToNewIdMap.ContainsKey( tag.Parent.Value ) ) {
                     tag.Parent = oldIdToNewIdMap[tag.Parent.Value];
@@ -138,9 +131,25 @@ namespace FenrirFsDbConverter {
         }
 
         // FenrirFSの動画とラベルの紐づけ情報を新しいアプリケーションの形式に変換する
-        public List<NewVideoTag> ConvertVideoTags( List<FenrirLabeledfiles> videoTags, List<NewFile> files, List<NewTag> tags ) {
-            // ファイルとタグをDBに登録した後に変換する必要がある
-            return new List<NewVideoTag>();
+        public List<NewVideoTag> ConvertVideoTags( List<FenrirLabeledfiles> videoTags ) {
+            Console.WriteLine( "Converting videoTags data..." );
+
+            var newRules = new List<NewVideoTag>();
+
+            foreach ( var rule in videoTags ) {
+
+                var videoId = rule.FileId ?? 0; // ファイルIDがnullの場合は0とする
+                var tagId = rule.LabelID ?? 0; // ラベルIDがnullの場合は0とする
+
+                var newRule = new NewVideoTag
+                {
+                    VideoId = videoId,
+                    TagId = tagId,
+                };
+
+                newRules.Add( newRule );
+            }
+            return newRules;
         }
 
         // FenrirFSのファイルの自動振り分け設定を新しいアプリケーションの形式に変換する
