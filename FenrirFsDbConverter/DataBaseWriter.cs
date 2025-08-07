@@ -116,7 +116,7 @@ namespace FenrirFsDbConverter {
                 }
             }
             catch ( Exception ex ) {
-                Console.WriteLine( $"Error writing file data to destination DB: {ex.Message}" );
+                Console.WriteLine( $"\nError writing file data to destination DB: {ex.Message}" );
             }
         }
 
@@ -161,7 +161,7 @@ namespace FenrirFsDbConverter {
                         tag.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
                     } else {
                         // 行が新規に挿入されなかった
-                        command.CommandText = "SELECT FileID FROM Videos WHERE TagName = $tagName";
+                        command.CommandText = "SELECT TagID FROM Tags WHERE TagName = $tagName";
                         command.Parameters.Clear();
                         command.Parameters.AddWithValue( "$tagName", tag.TagName );
                         tag.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
@@ -169,7 +169,7 @@ namespace FenrirFsDbConverter {
                 }
             }
             catch (Exception ex) {
-                Console.WriteLine($"Error writing tag data to destination DB: {ex.Message}");
+                Console.WriteLine($"\nError writing tag data to destination DB: {ex.Message}");
             }
         }
 

@@ -78,11 +78,14 @@ namespace FenrirFsDbConverter {
 
                 var newTag = new NewTag
                 {
+                    TagId = 0,
                     TagName = group.LabelGroupName,
-                    IsGroup = 1,
-                    IsExpanded = 1 - ( group.Folded ?? 0 ),
+                    TagColor = null, // グループには色がない
+                    Parent = group.ParentGroupId, // 親IDを一時的に保持
                     OrderInGroup = group.OrderInList,
-                    Parent = group.ParentGroupId // 親IDを一時的に保持
+                    IsExpanded = 1 - ( group.Folded ?? 0 ),
+                    IsGroup = 1,
+                    UpdatedId = 0,
                 };
                 groupMap.Add( group.LabelGroupID.Value, newTag );
                 newTags.Add( newTag );
@@ -91,14 +94,18 @@ namespace FenrirFsDbConverter {
             // 2. ラベルを変換
             //    次に、すべてのラベルをNewTagオブジェクトに変換します。
             foreach ( var label in labels ) {
+                var labelColor = ConvertColorNameToHex(label.LabelColorName);
+
                 var newTag = new NewTag
                 {
+                    TagId = label.LabelID ?? 0, // ラベルIDがnullの場合は0とする
                     TagName = label.LabelName,
-                    TagColor = label.LabelColorName,
-                    IsGroup = 0,
+                    TagColor = labelColor,
+                    Parent = label.GroupId, // 親グループのIDを一時的に保持
                     OrderInGroup = label.OrderInGroup,
                     IsExpanded = 1, // ラベルは常に展開状態
-                    Parent = label.GroupId // 親グループのIDを一時的に保持
+                    IsGroup = 0,
+                    UpdatedId = 0,
                 };
                 newTags.Add( newTag );
             }
@@ -156,6 +163,28 @@ namespace FenrirFsDbConverter {
         public List<NewFilter> ConvertFilters( List<FenrirFilter> filters ) {
             // 具体的に何が必要か不明なため、仮の実装
             return new List<NewFilter>();
+        }
+
+        // ラベル色文字列をカラーコードに変換する
+        private string ConvertColorNameToHex( string? colorName ) {
+            return colorName switch {
+                "Red" => "#FF0000",
+                "Green" => "#00FF00",
+                "Blue" => "#0000FF",
+                "Yellow" => "#FFFF00",
+                "Lime" => "#00FF00",
+                "Pink" => "#FFC0CB",
+                "Purple" => "#800080",
+                "Magenta" => "#FF00FF",
+                "Aqua" => "#00FFFF",
+                "Silver" => "#C0C0C0",
+                "Orange" => "#FFA500",
+                "Black" => "#000000",
+                "Brown" => "#A52A2A",
+                "Olive" => "#808000",
+                "SkyBlue" => "#87CEEB",
+                _ => "#000000", // デフォルトは黒
+            };
         }
     }
 }
