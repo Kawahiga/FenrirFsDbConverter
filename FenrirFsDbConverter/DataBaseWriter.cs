@@ -145,12 +145,8 @@ namespace FenrirFsDbConverter {
         private void DisplayProgress( int processed ) {
             int currentPercentage = (int)((double)processed / totalItems * 100);
 
-            if ( processed == 1 ) {
-                Console.Write( "\n" );
-            }
-
             if ( currentPercentage != lastPercentage ) {
-                Console.Write( $"Progress: {currentPercentage}% ({processed}/{totalItems})" );
+                Console.Write( $"\rProgress: {currentPercentage}% ({processed}/{totalItems})" );
                 
                 lastPercentage = currentPercentage;
             }
