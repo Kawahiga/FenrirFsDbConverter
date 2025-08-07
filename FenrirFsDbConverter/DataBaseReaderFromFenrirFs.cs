@@ -100,10 +100,10 @@ namespace FenrirFsDbConverter {
         }
 
         // ラベルグループ情報を読み込む
-        public List<FenrirLabel> ReadLabelGroups() {
-            Console.WriteLine( "Reading labels from FenrirFS DB..." );
+        public List<FenrirLabelGroup> ReadLabelGroups() {
+            Console.WriteLine( "Reading label groups from FenrirFS DB..." );
 
-            var labels = new List<FenrirLabel>();
+            var labelGroups = new List<FenrirLabelGroup>();
 
             try {
                 using var connection = new SqliteConnection($"Data Source={_dbPath}");
@@ -111,32 +111,24 @@ namespace FenrirFsDbConverter {
 
                 var command = connection.CreateCommand();
                 command.CommandText = @"
-                    SELECT LabelID, LabelName, LabelColorName, GroupId, OrderInGroup
-                    FROM labels";
+                    SELECT LabelGroupID, LabelGroupName, OrderInList, ParentGroupId
+                    FROM labelgroups";
 
                 using var reader = command.ExecuteReader();
                 while ( reader.Read() ) {
-                    var id = reader.GetInt32(0);
-                    var labelName = reader.GetString(1);
-                    var labelColorName = reader.GetString(2);
-                    var groupId = reader.GetInt32(3);
-                    var orderInGroup = reader.GetInt32(4);
-
-                    var label = new FenrirLabel
-                    {
-                        LabelID = id,
-                        LabelName = labelName,
-                        LabelColorName = labelColorName,
-                        GroupId = groupId,
-                        OrderInGroup = orderInGroup
+                    var labelGroup = new FenrirLabelGroup {
+                        LabelGroupID = reader.IsDBNull(0) ? (int?)null : reader.GetInt32(0),
+                        LabelGroupName = reader.IsDBNull(1) ? null : reader.GetString(1),
+                        OrderInList = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2),
+                        ParentGroupId = reader.IsDBNull(10) ? (int?)null : reader.GetInt32(4)
                     };
-                    labels.Add( label );
+                    labelGroups.Add( labelGroup );
                 }
             }
             catch ( Exception ex ) {
-                Console.WriteLine( $"Error reading labels from FenrirFS DB: {ex.Message}" );
+                Console.WriteLine( $"Error reading label groups from FenrirFS DB: {ex.Message}" );
             }
-            return labels;
+            return labelGroups;
         }
     }
 }
