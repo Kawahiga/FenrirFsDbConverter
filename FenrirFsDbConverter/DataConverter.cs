@@ -80,7 +80,7 @@ namespace FenrirFsDbConverter {
                 {
                     TagId = 0,
                     TagName = group.LabelGroupName,
-                    TagColor = null, // グループには色がない
+                    TagColor = "#000000", // グループには色がない
                     Parent = group.ParentGroupId, // 親IDを一時的に保持
                     OrderInGroup = group.OrderInList,
                     IsExpanded = 1 - ( group.Folded ?? 0 ),

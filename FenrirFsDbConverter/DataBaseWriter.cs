@@ -26,44 +26,49 @@ namespace FenrirFsDbConverter {
             using var connection = new SqliteConnection($"Data Source={_dbPath}");
             connection.Open();
 
-            var command = connection.CreateCommand();
+            try {
+                var command = connection.CreateCommand();
 
-            command.CommandText =
-            @"
-                DROP TABLE IF EXISTS Videos;
-                DROP TABLE IF EXISTS Tags;
-                DROP TABLE IF EXISTS VideoTags;
+                command.CommandText =
+                @"
+                    DROP TABLE IF EXISTS Videos;
+                    DROP TABLE IF EXISTS Tags;
+                    DROP TABLE IF EXISTS VideoTags;
 
-                CREATE TABLE IF NOT EXISTS Videos (
-                    FileID INTEGER PRIMARY KEY AUTOINCREMENT,
-                    FilePath TEXT NOT NULL UNIQUE,
-                    FileName TEXT NOT NULL,
-                    Extension TEXT DEFAULT '',
-                    FileSize INTEGER DEFAULT 0,
-                    LastModified TEXT,
-                    Duration REAL DeFAULT 0.0
-                );
+                    CREATE TABLE IF NOT EXISTS Videos (
+                        FileID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        FilePath TEXT NOT NULL UNIQUE,
+                        FileName TEXT NOT NULL,
+                        Extension TEXT DEFAULT '',
+                        FileSize INTEGER DEFAULT 0,
+                        LastModified TEXT,
+                        Duration REAL DeFAULT 0.0
+                    );
                 
-                CREATE TABLE IF NOT EXISTS Tags (
-                    TagID INTEGER PRIMARY KEY AUTOINCREMENT,
-                    TagName TEXT NOT NULL UNIQUE,
-                    TagColor TEXT,
-                    Parent INTEGER,
-                    OrderInGroup INTEGER DEFAULT 0,
-                    IsGroup BOOLEAN DEFAULT 0,
-                    IsExpand BOOLEAN DEFAULT 1,
-                    FOREIGN KEY (Parent) REFERENCES Tags(TagID)
-                );
+                    CREATE TABLE IF NOT EXISTS Tags (
+                        TagID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        TagName TEXT NOT NULL UNIQUE,
+                        TagColor TEXT,
+                        Parent INTEGER,
+                        OrderInGroup INTEGER DEFAULT 0,
+                        IsGroup BOOLEAN DEFAULT 0,
+                        IsExpand BOOLEAN DEFAULT 1,
+                        FOREIGN KEY (Parent) REFERENCES Tags(TagID)
+                    );
                 
-                CREATE TABLE IF NOT EXISTS VideoTags (
-                    VideoId INTEGER,
-                    TagId INTEGER,
-                    FOREIGN KEY (VideoId) REFERENCES Videos(FileID),
-                    FOREIGN KEY (TagId) REFERENCES Tags(TagID),
-                    PRIMARY KEY (VideoId, TagId)
-                );
-            ";
-            command.ExecuteNonQuery();
+                    CREATE TABLE IF NOT EXISTS VideoTags (
+                        VideoId INTEGER,
+                        TagId INTEGER,
+                        FOREIGN KEY (VideoId) REFERENCES Videos(FileID),
+                        FOREIGN KEY (TagId) REFERENCES Tags(TagID),
+                        PRIMARY KEY (VideoId, TagId)
+                    );
+                ";
+                command.ExecuteNonQuery();
+            }
+            catch ( Exception ex ) {
+                Console.WriteLine( $"Error initializing database: {ex.Message}" );
+            }
         }
 
         // ファイル情報を変換後の形式でDBに保存する
