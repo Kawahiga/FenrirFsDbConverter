@@ -8,7 +8,7 @@ namespace FenrirFsDbConverter.ModelFenrirFSDB {
     // fenrirFSのFile情報を表すクラス
     internal class FenrirFile {
         // ファイルID (主キー)
-        public int? FileID { get; set; }
+        public int FileID { get; set; }
 
         // ファイル名
         public string? FileName { get; set; }

@@ -9,12 +9,11 @@ public class Program {
     public static void Main( string[] args ) {
         Console.WriteLine( "FenrirFS DB Converter started." );
 
-        //SQLitePCL.Batteries.Init(); // SQLiteの初期化
-
         // TODO: コマンドライン引数や設定ファイルからDBのパスなどを取得する
         // 【暫定処理】パスをハードコーディング
         string fenrirDbPath = @"C:\Users\kawahigashi\Desktop\えっち.db";
-        //string destinationDbPath = @"C:\Users\kawahigashi\Desktop\newDB.db";
+        string destinationDbPath = @"C:\Users\kawahigashi\Desktop\newDB.db";
+        string hardCodePath = @"H:\サンプル ビデオ\Fenrir用のべたん\Fenrir管理\個人用.profile\files\";
 
         // 1. FenrirFSからデータを読み込む
         var reader = new DataBaseReaderFromFenrirFs(fenrirDbPath);
@@ -26,19 +25,19 @@ public class Program {
         // ... 他のデータも同様に読み込む
 
         // 2. データを新しい形式に変換する
-        //var converter = new DataConverter();
-        //var newAppFiles = converter.ConvertFiles(fenrirFiles);
+        var converter = new DataConverter( hardCodePath );
+        var newAppFiles = converter.ConvertFiles(fenrirFiles);
         //var newAppCategories = converter.ConvertTagsToCategories(fenrirTags);
         // ...
 
         // 3. 新しいDBにデータを書き込む
-        //var writer = new DestinationDbWriter(destinationDbPath);
-        //writer.SaveFiles( newAppFiles );
+        var writer = new DataBaseWriter(destinationDbPath);
+        writer.SaveFiles( newAppFiles );
         //writer.SaveCategories( newAppCategories );
         // ...
 
         Console.WriteLine( "Conversion completed successfully!" );
-        //Console.ReadLine();
+        Console.ReadLine();
     }
 }
 

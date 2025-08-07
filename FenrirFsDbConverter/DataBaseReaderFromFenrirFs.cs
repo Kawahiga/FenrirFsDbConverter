@@ -21,8 +21,9 @@ namespace FenrirFsDbConverter {
 
             Console.WriteLine( "Reading files from FenrirFS DB..." );
 
+            var videos = new List<FenrirFile>();
+
             try {
-                var videos = new List<FenrirFile>();
                 using var connection = new SqliteConnection($"Data Source={_dbPath}");
                 connection.Open();
 
@@ -32,16 +33,11 @@ namespace FenrirFsDbConverter {
                     FROM files";
 
                 using var reader = command.ExecuteReader();
-                int count = 0;
                 while ( reader.Read() ) {
-                    count++;
-
                     var id = reader.GetInt32(0);
                     var aliasTarget = reader.GetString(1);
                     var displayFileName = reader.GetString(2);
                     var fileSize = reader.GetInt64(3);
-                    // ISO 8601形式で保存した日付を正しく読み込むため、スタイルを指定します
-                    //var lastModified = DateTime.Parse(reader.GetString(4), null, System.Globalization.DateTimeStyles.RoundtripKind);
                     var lastModifiedDate = reader.GetString(4);
                     var lastModifiedTime = reader.GetString(5);
                     var mediaDuration = reader.GetInt64(6);
@@ -58,12 +54,11 @@ namespace FenrirFsDbConverter {
                     };
                     videos.Add( video );
                 }
-                return videos;
             }
             catch ( Exception ex ) {
                 Console.WriteLine( $"Error reading files from FenrirFS DB: {ex.Message}" );
-                return new List<FenrirFile>();
             }
+            return videos;
         }
 
 
