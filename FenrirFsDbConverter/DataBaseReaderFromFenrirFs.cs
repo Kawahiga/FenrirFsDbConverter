@@ -16,7 +16,7 @@ namespace FenrirFsDbConverter {
             _dbPath = dbPath;
         }
 
-        // FenrirFSのDBからファイル情報を読み込む
+        // ファイル情報を読み込む
         public List<FenrirFile> ReadFiles() {
 
             Console.WriteLine( "Reading files from FenrirFS DB..." );
@@ -42,8 +42,7 @@ namespace FenrirFsDbConverter {
                     var lastModifiedTime = reader.GetString(5);
                     var mediaDuration = reader.GetInt64(6);
 
-                    var video = new FenrirFile
-                    {
+                    var video = new FenrirFile {
                         FileID = id,
                         DisplayFileName = displayFileName,
                         AliasTarget = aliasTarget,
@@ -61,12 +60,83 @@ namespace FenrirFsDbConverter {
             return videos;
         }
 
-
         // ラベル情報を読み込む
-        //public List<FenrirTag> ReadAllTags() {
-        //    // TODO: DBに接続し、タグ情報を読み込んでFenrirTagのリストを返す
-        //    Console.WriteLine( "Reading tags from FenrirFS DB..." );
-        //    return new List<FenrirTag>();
-        //}
+        public List<FenrirLabel> ReadLabels() {
+            Console.WriteLine( "Reading labels from FenrirFS DB..." );
+
+            var labels = new List<FenrirLabel>();
+
+            try {
+                using var connection = new SqliteConnection($"Data Source={_dbPath}");
+                connection.Open();
+
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                    SELECT LabelID, LabelName, LabelColorName, GroupId, OrderInGroup
+                    FROM labels";
+
+                using var reader = command.ExecuteReader();
+                while ( reader.Read() ) {
+                    var id = reader.GetInt32(0);
+                    var labelName = reader.GetString(1);
+                    var labelColorName = reader.GetString(2);
+                    var groupId = reader.GetInt32(3);
+                    var orderInGroup = reader.GetInt32(4);
+
+                    var label = new FenrirLabel {
+                        LabelID = id,
+                        LabelName = labelName,
+                        LabelColorName = labelColorName,
+                        GroupId = groupId,
+                        OrderInGroup = orderInGroup
+                    };
+                    labels.Add( label );
+                }
+            }
+            catch ( Exception ex ) {
+                Console.WriteLine( $"Error reading labels from FenrirFS DB: {ex.Message}" );
+            }
+            return labels;
+        }
+
+        // ラベルグループ情報を読み込む
+        public List<FenrirLabel> ReadLabelGroups() {
+            Console.WriteLine( "Reading labels from FenrirFS DB..." );
+
+            var labels = new List<FenrirLabel>();
+
+            try {
+                using var connection = new SqliteConnection($"Data Source={_dbPath}");
+                connection.Open();
+
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                    SELECT LabelID, LabelName, LabelColorName, GroupId, OrderInGroup
+                    FROM labels";
+
+                using var reader = command.ExecuteReader();
+                while ( reader.Read() ) {
+                    var id = reader.GetInt32(0);
+                    var labelName = reader.GetString(1);
+                    var labelColorName = reader.GetString(2);
+                    var groupId = reader.GetInt32(3);
+                    var orderInGroup = reader.GetInt32(4);
+
+                    var label = new FenrirLabel
+                    {
+                        LabelID = id,
+                        LabelName = labelName,
+                        LabelColorName = labelColorName,
+                        GroupId = groupId,
+                        OrderInGroup = orderInGroup
+                    };
+                    labels.Add( label );
+                }
+            }
+            catch ( Exception ex ) {
+                Console.WriteLine( $"Error reading labels from FenrirFS DB: {ex.Message}" );
+            }
+            return labels;
+        }
     }
 }
