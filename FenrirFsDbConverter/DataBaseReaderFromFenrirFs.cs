@@ -32,7 +32,10 @@ namespace FenrirFsDbConverter {
                     FROM files";
 
                 using var reader = command.ExecuteReader();
+                int count = 0;
                 while ( reader.Read() ) {
+                    count++;
+
                     var id = reader.GetInt32(0);
                     var aliasTarget = reader.GetString(1);
                     var displayFileName = reader.GetString(2);
@@ -41,7 +44,7 @@ namespace FenrirFsDbConverter {
                     //var lastModified = DateTime.Parse(reader.GetString(4), null, System.Globalization.DateTimeStyles.RoundtripKind);
                     var lastModifiedDate = reader.GetString(4);
                     var lastModifiedTime = reader.GetString(5);
-                    var mediaDuration = reader.GetInt32(6);
+                    var mediaDuration = reader.GetInt64(6);
 
                     var video = new FenrirFile
                     {

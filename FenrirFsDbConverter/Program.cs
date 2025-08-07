@@ -9,7 +9,8 @@ public class Program {
     public static void Main( string[] args ) {
         Console.WriteLine( "FenrirFS DB Converter started." );
 
-        
+        //SQLitePCL.Batteries.Init(); // SQLiteの初期化
+
         // TODO: コマンドライン引数や設定ファイルからDBのパスなどを取得する
         // 【暫定処理】パスをハードコーディング
         string fenrirDbPath = @"C:\Users\kawahigashi\Desktop\えっち.db";
@@ -37,7 +38,7 @@ public class Program {
         // ...
 
         Console.WriteLine( "Conversion completed successfully!" );
-        Console.ReadLine();
+        //Console.ReadLine();
     }
 }
 

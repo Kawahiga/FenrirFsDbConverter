@@ -110,7 +110,7 @@ namespace FenrirFsDbConverter.ModelFenrirFSDB {
         public int? ImageVerticalSize { get; set; }
 
         // 動画や音声の再生時間
-        public int? MediaDuration { get; set; }
+        public long? MediaDuration { get; set; }
 
         // 写真の撮影日 (YYYY/MM/DD)
         public string? PhotoTakenDate { get; set; }
