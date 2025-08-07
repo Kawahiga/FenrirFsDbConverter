@@ -20,8 +20,8 @@ public class Program {
         var fenrirFiles = reader.ReadFiles();
         var fenrirLabels = reader.ReadLabels();
         var fenrirLabelGroups = reader.ReadLabelGroups();
-        //var fenrirLabeledFiles = reader.ReadAllTagsLabeledFiles();
-        //var fenrirFilters = reader.ReadAllFilters();
+        var fenrirLabeledFiles = reader.ReadLabeledFiles();
+        //var fenrirFilters = reader.ReadFilters();
         // ... 他のデータも同様に読み込む
 
         // 2. データを新しい形式に変換する

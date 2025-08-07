@@ -77,7 +77,8 @@ namespace FenrirFsDbConverter {
                 if ( !group.LabelGroupID.HasValue )
                     continue;
 
-                var newTag = new NewTag {
+                var newTag = new NewTag
+                {
                     TagName = group.LabelGroupName,
                     IsGroup = 1,
                     IsExpanded = 1 - ( group.Folded ?? 0 ),
@@ -91,7 +92,8 @@ namespace FenrirFsDbConverter {
             // 2. ラベルを変換
             //    次に、すべてのラベルをNewTagオブジェクトに変換します。
             foreach ( var label in labels ) {
-                var newTag = new NewTag {
+                var newTag = new NewTag
+                {
                     TagName = label.LabelName,
                     TagColor = label.LabelColorName,
                     IsGroup = 0,
@@ -133,6 +135,18 @@ namespace FenrirFsDbConverter {
             }
 
             return newTags;
+        }
+
+        // FenrirFSの動画とラベルの紐づけ情報を新しいアプリケーションの形式に変換する
+        public List<NewVideoTag> ConvertVideoTags( List<FenrirLabeledfiles> videoTags, List<NewFile> files, List<NewTag> tags ) {
+            // ファイルとタグをDBに登録した後に変換する必要がある
+            return new List<NewVideoTag>();
+        }
+
+        // FenrirFSのファイルの自動振り分け設定を新しいアプリケーションの形式に変換する
+        public List<NewFilter> ConvertFilters( List<FenrirFilter> filters ) {
+            // 具体的に何が必要か不明なため、仮の実装
+            return new List<NewFilter>();
         }
     }
 }

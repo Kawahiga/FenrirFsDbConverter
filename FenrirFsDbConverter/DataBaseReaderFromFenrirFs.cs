@@ -132,5 +132,87 @@ namespace FenrirFsDbConverter {
             }
             return labelGroups;
         }
+
+        // ファイルとタグの関連付け情報を読み込む
+        public List<FenrirLabeledfiles> ReadLabeledFiles() {
+            Console.WriteLine( "Reading labeled files from FenrirFS DB..." );
+
+            var labeledFiles = new List<FenrirLabeledfiles>();
+
+            try {
+                using var connection = new SqliteConnection( $"Data Source={_dbPath}" );
+                connection.Open();
+
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                    SELECT LabeledFileID, LabelID, FileId
+                    FROM labeledfiles";
+
+                using var reader = command.ExecuteReader();
+                while ( reader.Read() ) {
+                    var labeledFile = new FenrirLabeledfiles {
+                        LabeledFileID = reader.IsDBNull( 0 ) ? (int?)null : reader.GetInt32( 0 ),
+                        LabelID = reader.IsDBNull( 1 ) ? (int?)null : reader.GetInt32( 1 ),
+                        FileId = reader.IsDBNull( 2 ) ? (int?)null : reader.GetInt32( 2 ),
+                    };
+                    labeledFiles.Add( labeledFile );
+                }
+            }
+            catch ( Exception ex ) {
+                Console.WriteLine( $"Error reading labeled files from FenrirFS DB: {ex.Message}" );
+            }
+            return labeledFiles;
+        }
+
+        // ファイルの自動振り分け設定を読み込む
+        public List<FenrirFilter> ReadFilters() {
+            Console.WriteLine( "Reading filters from FenrirFS DB..." );
+
+            var filters = new List<FenrirFilter>();
+
+            try {
+                using var connection = new SqliteConnection( $"Data Source={_dbPath}" );
+                connection.Open();
+
+                var command = connection.CreateCommand();
+                // どの項目が必要か精査できていない
+                command.CommandText = @"
+                    SELECT FilterId, Enabled, FileName, FileNameCompType, Extension, ExtensionCompType, Comment, CommentCompType, FileSizeEnabled, MinFileSize, MaxFileSize, DateEnabled, StartDate, EndDate, SkipTray, SetStar, LabelEnabled, LabelId, DoDelete, ImmediateApply, FilterOrder
+                    FROM filter";
+
+                using var reader = command.ExecuteReader();
+                while ( reader.Read() ) {
+                    var filter = new FenrirFilter
+                    {
+                        FilterId = reader.IsDBNull( 0 ) ? (int?)null : reader.GetInt32( 0 ),
+                        Enabled = reader.IsDBNull( 1 ) ? (int?)null : reader.GetInt32( 1 ),
+                        FileName = reader.IsDBNull( 2 ) ? null : reader.GetString( 2 ),
+                        FileNameCompType = reader.IsDBNull( 3 ) ? (int?)null : reader.GetInt32( 3 ),
+                        Extension = reader.IsDBNull( 4 ) ? null : reader.GetString( 4 ),
+                        ExtensionCompType = reader.IsDBNull( 5 ) ? (int?)null : reader.GetInt32( 5 ),
+                        Comment = reader.IsDBNull( 6 ) ? null : reader.GetString( 6 ),
+                        CommentCompType = reader.IsDBNull( 7 ) ? (int?)null : reader.GetInt32( 7 ),
+                        FileSizeEnabled = reader.IsDBNull( 8 ) ? (int?)null : reader.GetInt32( 8 ),
+                        MinFileSize = reader.IsDBNull( 9 ) ? (int?)null : reader.GetInt32( 9 ),
+                        MaxFileSize = reader.IsDBNull( 10 ) ? (int?)null : reader.GetInt32( 10 ),
+                        DateEnabled = reader.IsDBNull( 11 ) ? (int?)null : reader.GetInt32( 11 ),
+                        StartDate = reader.IsDBNull( 12 ) ? null : reader.GetString( 12 ),
+                        EndDate = reader.IsDBNull( 13 ) ? null : reader.GetString( 13 ),
+                        SkipTray = reader.IsDBNull( 14 ) ? (int?)null : reader.GetInt32( 14 ),
+                        SetStar = reader.IsDBNull( 15 ) ? (int?)null : reader.GetInt32( 15 ),
+                        LabelEnabled = reader.IsDBNull( 16 ) ? (int?)null : reader.GetInt32( 16 ),
+                        LabelId = reader.IsDBNull( 17 ) ? (int?)null : reader.GetInt32( 17 ),
+                        DoDelete = reader.IsDBNull( 18 ) ? (int?)null : reader.GetInt32( 18 ),
+                        ImmediateApply = reader.IsDBNull( 19 ) ? (int?)null : reader.GetInt32( 19 ),
+                        FilterOrder = reader.IsDBNull( 20 ) ? (int?)null : reader.GetInt32( 20 )
+                    };
+                    filters.Add( filter );
+                }
+            }
+            catch ( Exception ex ) {
+                Console.WriteLine( $"Error reading filters from FenrirFS DB: {ex.Message}" );
+            }
+            return filters;
+        }
     }
 }

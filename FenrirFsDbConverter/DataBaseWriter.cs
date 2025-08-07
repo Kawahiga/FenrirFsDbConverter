@@ -51,6 +51,7 @@ namespace FenrirFsDbConverter {
                     Parent INTEGER,
                     OrderInGroup INTEGER DEFAULT 0,
                     IsGroup BOOLEAN DEFAULT 0,
+                    IsExpand BOOLEAN DEFAULT 1,
                     FOREIGN KEY (Parent) REFERENCES Tags(TagID)
                 );
                 
@@ -121,15 +122,16 @@ namespace FenrirFsDbConverter {
                     var command = connection.CreateCommand();
                     command.CommandText = @"
                         INSERT OR IGNORE INTO Tags 
-                        (TagName, TagColor, Parent, OrderInGroup, IsGroup) 
+                        (TagName, TagColor, Parent, OrderInGroup, IsGroup, IsExpand ) 
                         VALUES 
-                        ($tagName, $tagColor, $parent, $orderInGroup, $isGroup)";
+                        ($tagName, $tagColor, $parent, $orderInGroup, $isGroup, $isExpand)";
 
                     command.Parameters.AddWithValue("$tagName", tag.TagName);
                     command.Parameters.AddWithValue("$tagColor", tag.TagColor ?? (object)DBNull.Value);
                     command.Parameters.AddWithValue("$parent", tag.Parent ?? (object)DBNull.Value);
                     command.Parameters.AddWithValue("$orderInGroup", tag.OrderInGroup ?? 0);
                     command.Parameters.AddWithValue("$isGroup", tag.IsGroup ?? 0);
+                    command.Parameters.AddWithValue("$isExpand", tag.IsExpanded ?? 0);
 
                     command.ExecuteNonQuery();
 

@@ -14,5 +14,7 @@ namespace FenrirFsDbConverter.ModelNewDB {
         public DateTime LastModified { get; set; }  // 最終更新日時（YYYY/MM/dd HH:mm:ss形式）
         public double Duration { get; set; }    // 動画の再生時間（秒）
         public string? Extension { get; set; } // ファイルの拡張子（小文字）
+
+        public int UpdatedId { get; set; } // 更新後の新ID
     }
 }
