@@ -136,6 +136,29 @@ namespace FenrirFsDbConverter {
                 }
             }
 
+            // 4. OrderInGroupの整合性を取る
+            //    同じ親を持つタグ（グループとラベル）の順序を再設定します。
+            //    グループが先に、次にラベルが来るように並べ替えます。
+            var groupedByParent = newTags.GroupBy(t => t.Parent);
+
+            //foreach ( var group in newTags ) {
+            //    group.TagName = group.TagName + $" (旧: {group.OrderInGroup})"; // デバッグ用
+            //}
+
+            foreach (var group in groupedByParent) {
+                // グループ(IsGroup=1)が先、次にラベル(IsGroup=0)が来るように並べ替え
+                // 元の順序も考慮する
+                var orderedTags = group.OrderByDescending(t => t.IsGroup)
+                                         .ThenBy(t => t.OrderInGroup)
+                                         .ToList();
+
+                // 新しい順序をOrderInGroupに設定
+                for (int i = 0; i < orderedTags.Count; i++) {
+                    orderedTags[i].OrderInGroup = i;
+                    //orderedTags[i].TagName = orderedTags[i].TagName + $" (新: {orderedTags[i].OrderInGroup})"; // デバッグ用
+                }
+            }
+
             return newTags;
         }
 

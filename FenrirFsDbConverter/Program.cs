@@ -12,7 +12,8 @@ public class Program {
         // TODO: コマンドライン引数や設定ファイルからDBのパスなどを取得する
         // 【暫定処理】パスをハードコーディング
         string fenrirDbPath = @"H:\サンプル ビデオ\Fenrir用のべたん\Fenrir管理\個人用.profile\db\FenrirFS.db";
-        string destinationDbPath = @"C:\Users\kawahigashi\Desktop\videos.db";
+        //string destinationDbPath = @"C:\Users\kawahigashi\Desktop\videos.db";
+        string destinationDbPath = @"C:\Users\kawahigashi\AppData\Local\Packages\c262e66b-9f42-492e-b1a2-4ab4e846c855_yee5g11jw9r6r\LocalCache\Roaming\VideoManager3\videos.db";
         string hardCodePath = @"H:\サンプル ビデオ\Fenrir用のべたん\Fenrir管理\個人用.profile\files\";
 
         // 1. FenrirFSからデータを読み込む

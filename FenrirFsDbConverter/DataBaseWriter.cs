@@ -47,7 +47,7 @@ namespace FenrirFsDbConverter {
                 
                     CREATE TABLE IF NOT EXISTS Tags (
                         TagID INTEGER PRIMARY KEY AUTOINCREMENT,
-                        TagName TEXT NOT NULL UNIQUE,
+                        TagName TEXT NOT NULL,
                         TagColor TEXT,
                         Parent INTEGER,
                         OrderInGroup INTEGER DEFAULT 0,
