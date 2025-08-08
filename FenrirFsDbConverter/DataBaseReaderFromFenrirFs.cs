@@ -151,9 +151,9 @@ namespace FenrirFsDbConverter {
                 using var reader = command.ExecuteReader();
                 while ( reader.Read() ) {
                     var labeledFile = new FenrirLabeledfiles {
-                        LabeledFileID = reader.IsDBNull( 0 ) ? (int?)null : reader.GetInt32( 0 ),
-                        LabelID = reader.IsDBNull( 1 ) ? (int?)null : reader.GetInt32( 1 ),
-                        FileId = reader.IsDBNull( 2 ) ? (int?)null : reader.GetInt32( 2 ),
+                        LabeledFileID = reader.GetInt32( 0 ),
+                        LabelID = reader.GetInt32( 1 ),
+                        FileId = reader.GetInt32( 2 ),
                     };
                     labeledFiles.Add( labeledFile );
                 }

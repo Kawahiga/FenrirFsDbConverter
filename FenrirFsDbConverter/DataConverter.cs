@@ -78,7 +78,7 @@ namespace FenrirFsDbConverter {
 
                 var newTag = new NewTag
                 {
-                    TagId = 0,
+                    TagId = 0,  // グループのIDは後で割り当てるため一時的に0とする
                     TagName = group.LabelGroupName,
                     TagColor = "#000000", // グループには色がない
                     Parent = group.ParentGroupId, // 親IDを一時的に保持
@@ -113,7 +113,9 @@ namespace FenrirFsDbConverter {
             // 3. 新しいIDを採番し、親子関係を更新
             //    すべてのタグにユニークな新しいIDを割り当てます。
             //    同時に、古いIDで保持していた親子関係を新しいIDに解決します。
-            var nextId = 1;
+
+            // ラベル由来のIDの最大値を取得し、それ以降のIDをグループに割り振る
+            var nextId = ( labels.Any() ? labels.Max( l => l.LabelID ?? 0 ) : 0 ) + 1;
             var oldIdToNewIdMap = new Dictionary<int, int>();
 
             // まず、グループのIDを確定させます

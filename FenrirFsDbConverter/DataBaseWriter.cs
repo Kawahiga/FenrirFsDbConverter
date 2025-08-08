@@ -59,8 +59,6 @@ namespace FenrirFsDbConverter {
                     CREATE TABLE IF NOT EXISTS VideoTags (
                         VideoId INTEGER,
                         TagId INTEGER,
-                        FOREIGN KEY (VideoId) REFERENCES Videos(FileID),
-                        FOREIGN KEY (TagId) REFERENCES Tags(TagID),
                         PRIMARY KEY (VideoId, TagId)
                     );
                 ";
@@ -78,6 +76,9 @@ namespace FenrirFsDbConverter {
             try {
                 using var connection = new SqliteConnection($"Data Source={_dbPath}");
                 connection.Open();
+
+                // パフォーマンス向上のためトランザクションを開始
+                using var transaction = connection.BeginTransaction();
 
                 totalItems = files.Count;
                 lastPercentage = -1;
@@ -119,6 +120,8 @@ namespace FenrirFsDbConverter {
                         video.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
                     }
                 }
+                // トランザクションをコミット
+                transaction.Commit();
             }
             catch ( Exception ex ) {
                 Console.WriteLine( $"\nError writing file data to destination DB: {ex.Message}" );
@@ -144,33 +147,37 @@ namespace FenrirFsDbConverter {
                     var command = connection.CreateCommand();
                     command.CommandText = @"
                         INSERT OR IGNORE INTO Tags 
-                        (TagName, TagColor, Parent, OrderInGroup, IsGroup, IsExpand ) 
+                        (TagID, TagName, TagColor, Parent, OrderInGroup, IsGroup, IsExpand ) 
                         VALUES 
-                        ($tagName, $tagColor, $parent, $orderInGroup, $isGroup, $isExpand)";
+                        ($tagId, $tagName, $tagColor, $parent, $orderInGroup, $isGroup, $isExpand)";
 
+                    command.Parameters.AddWithValue("$tagId", tag.TagId);
                     command.Parameters.AddWithValue("$tagName", tag.TagName);
                     command.Parameters.AddWithValue("$tagColor", tag.TagColor ?? (object)DBNull.Value);
                     command.Parameters.AddWithValue("$parent", tag.Parent ?? (object)DBNull.Value);
                     command.Parameters.AddWithValue("$orderInGroup", tag.OrderInGroup ?? 0);
                     command.Parameters.AddWithValue("$isGroup", tag.IsGroup ?? 0);
                     command.Parameters.AddWithValue("$isExpand", tag.IsExpanded ?? 0);
+                    tag.UpdatedId = tag.TagId;
 
                     // コマンドを実行
-                    var rowsAffected = command.ExecuteNonQuery();
+                    command.ExecuteNonQuery();
 
-                    // DB更新後のIDを取得
-                    if ( rowsAffected > 0 ) {
-                        // 行が新規に挿入された
-                        command.CommandText = "SELECT last_insert_rowid()";
-                        command.Parameters.Clear();
-                        tag.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
-                    } else {
-                        // 行が新規に挿入されなかった
-                        command.CommandText = "SELECT TagID FROM Tags WHERE TagName = $tagName";
-                        command.Parameters.Clear();
-                        command.Parameters.AddWithValue( "$tagName", tag.TagName );
-                        tag.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
-                    }
+                    //// コマンドを実行
+                    //var rowsAffected = command.ExecuteNonQuery();
+                    //// DB更新後のIDを取得
+                    //if ( rowsAffected > 0 ) {
+                    //    // 行が新規に挿入された
+                    //    command.CommandText = "SELECT last_insert_rowid()";
+                    //    command.Parameters.Clear();
+                    //    tag.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
+                    //} else {
+                    //    // 行が新規に挿入されなかった
+                    //    command.CommandText = "SELECT TagID FROM Tags WHERE TagName = $tagName";
+                    //    command.Parameters.Clear();
+                    //    command.Parameters.AddWithValue( "$tagName", tag.TagName );
+                    //    tag.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
+                    //}
                 }
             }
             catch (Exception ex) {
@@ -182,11 +189,52 @@ namespace FenrirFsDbConverter {
         public void SaveVideoTags( List<NewVideoTag> videoTags, List<NewFile> files, List<NewTag> tags ) {
             Console.WriteLine( "Writing video tag data to destination DB..." );
             try {
-                // ファイルとタグの新旧IDを対応させる
+                // ファイルとタグの古いIDと新しいIDの対応表を作成
+                var fileIdMap = files.ToDictionary( f => f.Id, f => f.UpdatedId );
 
+                // TagIdが重複する可能性があるため、安全にDictionaryを作成する
+                var tagIdMap = new Dictionary<int, int>();
+                foreach (var tag in tags)
+                {
+                    tagIdMap.TryAdd(tag.TagId, tag.UpdatedId);
+                }
+
+                using var connection = new SqliteConnection( $"Data Source={_dbPath}" );
+                connection.Open();
+
+                // パフォーマンス向上のためトランザクションを開始
+                using var transaction = connection.BeginTransaction();
+
+                totalItems = videoTags.Count;
+                lastPercentage = -1;
+                int processedItems = 0;
+
+                var command = connection.CreateCommand();
+
+                foreach ( var videoTag in videoTags ) {
+                    // 進捗状況を表示
+                    DisplayProgress( ++processedItems );
+
+                    // 新しいIDを取得
+                    if ( fileIdMap.TryGetValue( videoTag.VideoId, out int newFileId ) &&
+                         tagIdMap.TryGetValue( videoTag.TagId, out int newTagId ) ) {
+
+                        command.CommandText = @"
+                        INSERT OR IGNORE INTO VideoTags (VideoId, TagId) 
+                        VALUES ($videoId, $tagId)";
+
+                        command.Parameters.Clear();
+                        command.Parameters.AddWithValue( "$videoId", newFileId );
+                        command.Parameters.AddWithValue( "$tagId", newTagId );
+
+                        command.ExecuteNonQuery();
+                    }
+                }
+                // トランザクションをコミット
+                transaction.Commit();
             }
             catch ( Exception ex ) {
-                Console.WriteLine( $"Error writing video tag data to destination DB: {ex.Message}" );
+                Console.WriteLine( $"\nError writing video tag data to destination DB: {ex.Message}" );
             }
         }
 
