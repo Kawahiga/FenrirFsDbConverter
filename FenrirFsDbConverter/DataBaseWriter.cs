@@ -42,7 +42,9 @@ namespace FenrirFsDbConverter {
                         Extension TEXT DEFAULT '',
                         FileSize INTEGER DEFAULT 0,
                         LastModified TEXT,
-                        Duration REAL DeFAULT 0.0
+                        Duration REAL DeFAULT 0.0,
+                        LikeCount INTEGER DEFAULT 0,
+                        ViewCount INTEGER DEFAULT 0
                     );
                 
                     CREATE TABLE IF NOT EXISTS Tags (
@@ -90,9 +92,9 @@ namespace FenrirFsDbConverter {
                     var command = connection.CreateCommand();
                     command.CommandText = @"
                         INSERT OR IGNORE INTO Videos 
-                        (FilePath, FileName, Extension, FileSize, LastModified, Duration) 
+                        (FilePath, FileName, Extension, FileSize, LastModified, Duration, LikeCount, ViewCount) 
                         VALUES 
-                        ($filePath, $fileName, $extension, $fileSize, $lastModified, $duration)";
+                        ($filePath, $fileName, $extension, $fileSize, $lastModified, $duration, $like, $view)";
 
 
                     command.Parameters.AddWithValue( "$filePath", video.FilePath );
@@ -102,6 +104,8 @@ namespace FenrirFsDbConverter {
                     // 日付は環境に依存しないISO 8601形式("o")で保存する
                     command.Parameters.AddWithValue( "$lastModified", video.LastModified.ToString( "o" ) );
                     command.Parameters.AddWithValue( "$duration", video.Duration );
+                    command.Parameters.AddWithValue( "$like", video.LikeCount );
+                    command.Parameters.AddWithValue( "$view", video.ViewCount );
 
                     // コマンドを実行
                     var rowsAffected = command.ExecuteNonQuery();

@@ -6,9 +6,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+// データ変換担当
 
 namespace FenrirFsDbConverter {
-    // データ変換担当
+    
     internal class DataConverter {
 
         private readonly string _hardCodePath;
@@ -17,10 +18,12 @@ namespace FenrirFsDbConverter {
             _hardCodePath = hardCodePath;
         }
 
-        // FenrirFSのデータを新しいアプリケーションの形式に変換する
-        public List<NewFile> ConvertFiles( List<FenrirFile> fenrirFiles ) {
+        // FenrirFSのファイルデータを新しいアプリケーションの形式に変換する
+        public List<NewFile> ConvertFiles( List<FenrirFile> fenrirFiles, List<FenrirLabeledfiles> videoTags ) {
             Console.WriteLine( "Converting file data..." );
             var newFiles = new List<NewFile>();
+
+            var likedFileIds = new HashSet<int>(videoTags.Where( vt => vt.LabelID == 16 && vt.FileId.HasValue ).Select( vt => vt.FileId.Value ));
 
             foreach ( var fenlirFile in fenrirFiles ) {
 
@@ -28,23 +31,18 @@ namespace FenrirFsDbConverter {
 
                 var fileName = fenlirFile.DisplayFileName;
                 // ファイル名が空の場合はスキップ
-                if ( string.IsNullOrEmpty( fileName ) )
-                    continue;
+                if ( string.IsNullOrEmpty( fileName ) ) continue;
 
                 var filePath = fenlirFile.AliasTarget;
                 // ファイルパスが空の場合はハードコード
-                if ( string.IsNullOrEmpty( filePath ) )
-                    filePath = string.Concat( _hardCodePath, fileName );
-
+                if ( string.IsNullOrEmpty( filePath ) ) filePath = string.Concat( _hardCodePath, fileName );
                 var fileSize = fenlirFile.FileSize ?? 0; // ファイルサイズがnullの場合は0とする
-
                 // ファイルの書き込み日時をISO 8601形式で保存するため、DateTimeに変換
                 var dateTimeString = $"{fenlirFile.LastWriteDate}T{fenlirFile.LastWriteTime}";
                 var lastModified = DateTime.Parse( dateTimeString );
-
                 double duration = fenlirFile.MediaDuration * 0.0000001 ?? 0.0; // メディアの再生時間がnullの場合は0とする
-
                 string extension = fenlirFile.Extension?.ToLower() ?? string.Empty; // 拡張子がnullの場合は空文字列とする
+                int likeCount = likedFileIds.Contains( id ) ? 1 : 0;    // いいねの数。likedFileIdsに含まれていれば1、そうでなければ0
 
                 var file = new NewFile
                 {
@@ -55,6 +53,8 @@ namespace FenrirFsDbConverter {
                     LastModified = lastModified,
                     Duration = duration,
                     Extension = extension,
+                    LikeCount = likeCount,
+                    ViewCount = 0, // 再生回数は初期値として0を設定
                 };
 
                 newFiles.Add( file );
@@ -67,95 +67,82 @@ namespace FenrirFsDbConverter {
             Console.WriteLine( "Converting tag data..." );
 
             var newTags = new List<NewTag>();
-            var groupMap = new Dictionary<int, NewTag>();
+            var oldIdToNewIdMap = new Dictionary<int, int>();
 
-            // 1. グループを変換
-            //    まず、すべてのグループをNewTagオブジェクトに変換し、古いIDをキーにして辞書に保存します。
-            //    この時点では、親子関係は古いIDのままです。
+            // 1. IDの開始番号を決定
+            var nextId = ( labels.Any() ? labels.Max( l => l.LabelID ?? 0 ) : 0 ) + 1;
+
+            // 2. 固定タグを作成
+            var allFilesTagId = nextId++;
+            var untaggedTagId = nextId++;
+            
+            newTags.Add( new NewTag { TagId = allFilesTagId, TagName = "全てのファイル", Parent = null, OrderInGroup = 0, IsGroup = 1, IsExpanded = 1, TagColor = "#FFFFFF", UpdatedId = 0 } );
+            newTags.Add( new NewTag { TagId = untaggedTagId, TagName = "タグなし", Parent = allFilesTagId, OrderInGroup = 0, IsGroup = 1, IsExpanded = 1, TagColor = "#FFFFFF", UpdatedId = 0 } );
+
+            // 3. 「グループなし」のIDを取得
+            var groupLessId = labelGroups.FirstOrDefault( g => g.LabelGroupName == "グループなし" )?.LabelGroupID;
+
+            // 4. 元のDBのラベルグループを「全てのファイル」配下のタグとして変換
             foreach ( var group in labelGroups ) {
-                if ( !group.LabelGroupID.HasValue )
-                    continue;
+                if ( !group.LabelGroupID.HasValue || group.LabelGroupID == groupLessId ) continue;
 
-                var newTag = new NewTag
-                {
-                    TagId = 0,  // グループのIDは後で割り当てるため一時的に0とする
+                var newTag = new NewTag {
+                    TagId = nextId,
                     TagName = group.LabelGroupName,
-                    TagColor = "#000000", // グループには色がない
-                    Parent = group.ParentGroupId, // 親IDを一時的に保持
+                    TagColor = "#000000",
+                    Parent = allFilesTagId, // 全てのグループを「全てのファイル」配下に置く
                     OrderInGroup = group.OrderInList,
                     IsExpanded = 1 - ( group.Folded ?? 0 ),
                     IsGroup = 1,
                     UpdatedId = 0,
                 };
-                groupMap.Add( group.LabelGroupID.Value, newTag );
+                oldIdToNewIdMap[group.LabelGroupID.Value] = nextId;
                 newTags.Add( newTag );
+                nextId++;
             }
 
-            // 2. ラベルを変換
-            //    次に、すべてのラベルをNewTagオブジェクトに変換します。
+            // 5. 元のDBのラベルを変換
             foreach ( var label in labels ) {
-                var labelColor = ConvertColorNameToHex(label.LabelColorName);
+                int? parentId;
+                // ラベルが「グループなし」に所属していた場合、親を「全てのファイル」にする
+                if ( groupLessId.HasValue && label.GroupId.HasValue && label.GroupId.Value == groupLessId.Value ) {
+                    parentId = allFilesTagId;
+                } else {
+                    // それ以外のラベルは、元の親グループIDを保持（後で解決）
+                    parentId = label.GroupId;
+                }
 
-                var newTag = new NewTag
-                {
-                    TagId = label.LabelID ?? 0, // ラベルIDがnullの場合は0とする
+                var labelColor = ConvertColorNameToHex( label.LabelColorName );
+                var newTag = new NewTag {
+                    TagId = label.LabelID ?? 0,
                     TagName = label.LabelName,
                     TagColor = labelColor,
-                    Parent = label.GroupId, // 親グループのIDを一時的に保持
+                    Parent = parentId,
                     OrderInGroup = label.OrderInGroup,
-                    IsExpanded = 1, // ラベルは常に展開状態
+                    IsExpanded = 1,
                     IsGroup = 0,
                     UpdatedId = 0,
                 };
                 newTags.Add( newTag );
             }
 
-            // 3. 新しいIDを採番し、親子関係を更新
-            //    すべてのタグにユニークな新しいIDを割り当てます。
-            //    同時に、古いIDで保持していた親子関係を新しいIDに解決します。
-
-            // ラベル由来のIDの最大値を取得し、それ以降のIDをグループに割り振る
-            var nextId = ( labels.Any() ? labels.Max( l => l.LabelID ?? 0 ) : 0 ) + 1;
-            var oldIdToNewIdMap = new Dictionary<int, int>();
-
-            // まず、グループのIDを確定させます
-            foreach ( var oldId in groupMap.Keys ) {
-                oldIdToNewIdMap[oldId] = nextId;
-                groupMap[oldId].TagId = nextId;
-                nextId++;
-            }
-
-            // すべてのタグ（グループとラベル）の親子関係を更新します
+            // 6. ラベルの親子関係を解決
+            // この時点で、グループの親は解決済み。ラベルの親（古いグループID）を新しいIDに置換する。
             foreach ( var tag in newTags ) {
-                // 親IDが設定されている場合、新しいIDに変換します
-                if ( tag.Parent.HasValue && oldIdToNewIdMap.ContainsKey( tag.Parent.Value ) ) {
+                if ( tag.IsGroup == 0 && tag.Parent.HasValue && oldIdToNewIdMap.ContainsKey( tag.Parent.Value ) ) {
                     tag.Parent = oldIdToNewIdMap[tag.Parent.Value];
-                } else {
-                    // 対応する親が見つからない場合は、親なしとします
-                    tag.Parent = null;
                 }
             }
 
-            // 4. OrderInGroupの整合性を取る
-            //    同じ親を持つタグ（グループとラベル）の順序を再設定します。
-            //    グループが先に、次にラベルが来るように並べ替えます。
-            var groupedByParent = newTags.GroupBy(t => t.Parent);
-
-            //foreach ( var group in newTags ) {
-            //    group.TagName = group.TagName + $" (旧: {group.OrderInGroup})"; // デバッグ用
-            //}
-
-            foreach (var group in groupedByParent) {
-                // グループ(IsGroup=1)が先、次にラベル(IsGroup=0)が来るように並べ替え
-                // 元の順序も考慮する
-                var orderedTags = group.OrderByDescending(t => t.IsGroup)
-                                         .ThenBy(t => t.OrderInGroup)
+            // 7. グループ内の表示順を再設定
+            var groupedByParent = newTags.GroupBy( t => t.Parent );
+            foreach ( var group in groupedByParent ) {
+                var orderedTags = group.OrderByDescending( t => t.IsGroup )
+                                         .ThenBy( t => t.OrderInGroup )
                                          .ToList();
 
-                // 新しい順序をOrderInGroupに設定
-                for (int i = 0; i < orderedTags.Count; i++) {
+                for ( int i = 0; i < orderedTags.Count; i++ ) {
                     orderedTags[i].OrderInGroup = i;
-                    //orderedTags[i].TagName = orderedTags[i].TagName + $" (新: {orderedTags[i].OrderInGroup})"; // デバッグ用
                 }
             }
 

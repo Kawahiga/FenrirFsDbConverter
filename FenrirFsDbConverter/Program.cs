@@ -26,7 +26,7 @@ public class Program {
 
         // 2. データを新しい形式に変換する
         var converter = new DataConverter( hardCodePath );
-        var newAppFiles = converter.ConvertFiles(fenrirFiles);
+        var newAppFiles = converter.ConvertFiles(fenrirFiles, fenrirLabeledFiles);
         var newAppTags = converter.ConvertTags(fenrirLabels, fenrirLabelGroups);
         var newAppVideoTag = converter.ConvertVideoTags(fenrirLabeledFiles);
         //var newAppFilters = converter.ConvertFilters(fenrirFilters);
