@@ -90,7 +90,7 @@ namespace FenrirFsDbConverter {
                     TagId = nextId,
                     TagName = group.LabelGroupName,
                     TagColor = "#000000",
-                    Parent = allFilesTagId, // 全てのグループを「全てのファイル」配下に置く
+                    Parent = group.ParentGroupId, // ここを修正
                     OrderInGroup = group.OrderInList,
                     IsExpanded = 1 - ( group.Folded ?? 0 ),
                     IsGroup = 1,
@@ -99,6 +99,19 @@ namespace FenrirFsDbConverter {
                 oldIdToNewIdMap[group.LabelGroupID.Value] = nextId;
                 newTags.Add( newTag );
                 nextId++;
+            }
+
+            // 4.5. グループの親子関係を解決 (追加)
+            foreach ( var tag in newTags ) {
+                // 「全てのファイル」タグ自身は親を持たない
+                if ( tag.TagId == allFilesTagId ) continue; 
+
+                if ( tag.IsGroup == 1 && tag.Parent.HasValue && oldIdToNewIdMap.ContainsKey( tag.Parent.Value ) ) {
+                    tag.Parent = oldIdToNewIdMap[tag.Parent.Value];
+                } else if ( tag.IsGroup == 1 && tag.Parent.HasValue && tag.Parent.Value == 1 ) { // ここを修正
+                    // 親がいないグループは「全てのファイル」の直下にする
+                    tag.Parent = allFilesTagId;
+                }
             }
 
             // 5. 元のDBのラベルを変換
