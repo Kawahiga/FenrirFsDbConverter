@@ -22,22 +22,22 @@ public class Program {
         var fenrirLabels = reader.ReadLabels();
         var fenrirLabelGroups = reader.ReadLabelGroups();
         var fenrirLabeledFiles = reader.ReadLabeledFiles();
-        //var fenrirFilters = reader.ReadFilters();
-
+        
         // 2. データを新しい形式に変換する
         var converter = new DataConverter( hardCodePath );
         var newAppFiles = converter.ConvertFiles(fenrirFiles, fenrirLabeledFiles);
         var newAppTags = converter.ConvertTags(fenrirLabels, fenrirLabelGroups);
         var newAppVideoTag = converter.ConvertVideoTags(fenrirLabeledFiles);
-        //var newAppFilters = converter.ConvertFilters(fenrirFilters);
-
+        var newArtists = converter.ConvertArtists(newAppFiles, newAppTags);
+        
         // 3. 新しいDBにデータを書き込む
         var writer = new DataBaseWriter(destinationDbPath);
         writer.SaveFiles( newAppFiles );
         writer.SaveTags( newAppTags );
         writer.SaveVideoTags( newAppVideoTag, newAppFiles, newAppTags );
-        //writer.SaveFilters( newAppFilters );
-    
+        writer.SaveArtists( newArtists );
+        writer.SaveVideoArtists( newArtists );
+
         Console.WriteLine( "Conversion completed successfully!" );
         Console.ReadLine();
     }

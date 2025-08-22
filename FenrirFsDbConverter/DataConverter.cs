@@ -2,8 +2,10 @@
 using FenrirFsDbConverter.ModelNewDB;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 // データ変換担当
@@ -184,12 +186,6 @@ namespace FenrirFsDbConverter {
             return newRules;
         }
 
-        // FenrirFSのファイルの自動振り分け設定を新しいアプリケーションの形式に変換する
-        public List<NewFilter> ConvertFilters( List<FenrirFilter> filters ) {
-            // 具体的に何が必要か不明なため、仮の実装
-            return new List<NewFilter>();
-        }
-
         // ラベル色文字列をカラーコードに変換する
         private string ConvertColorNameToHex( string? colorName ) {
             return colorName switch {
@@ -210,6 +206,215 @@ namespace FenrirFsDbConverter {
                 "SkyBlue" => "#87CEEB",
                 _ => "#000000", // デフォルトは黒
             };
+        }
+
+        /// <summary>
+        /// アーティストのグループ化（同一性の判定）を行うためのデータ構造です。
+        /// Union-Find（またはDisjoint Set Union）アルゴリズムを実装しています。
+        /// </summary>
+        private class UnionFind {
+            // 各要素（アーティスト名）の親要素を保持します。
+            private readonly Dictionary<string, string> _parent;
+
+            public UnionFind() {
+                _parent = new Dictionary<string, string>();
+            }
+
+            /// <summary>
+            /// 新しい要素をセットに追加します。最初は自分自身を親とします。
+            /// </summary>
+            public void Add( string name ) {
+                if ( !_parent.ContainsKey( name ) ) {
+                    _parent[name] = name;
+                }
+            }
+
+            /// <summary>
+            /// 指定した要素の根（グループの代表元）を見つけます。
+            /// 途中の要素を根に直接つなぎ直す「経路圧縮」で効率化しています。
+            /// </summary>
+            public string Find( string name ) {
+                if ( !_parent.ContainsKey( name ) ) {
+                    Add( name );
+                    return name;
+                }
+
+                if ( _parent[name] == name ) {
+                    return name;
+                }
+
+                return _parent[name] = Find( _parent[name] );
+            }
+
+            /// <summary>
+            /// 2つの要素が含まれるグループを統合します。
+            /// 代表元を辞書順で若い方に統一し、動作の安定性を確保します。
+            /// </summary>
+            public void Union( string name1, string name2 ) {
+                string root1 = Find(name1);
+                string root2 = Find(name2);
+                if ( root1 != root2 ) {
+                    if ( string.Compare( root1, root2, StringComparison.Ordinal ) < 0 ) {
+                        _parent[root2] = root1;
+                    } else {
+                        _parent[root1] = root2;
+                    }
+                }
+            }
+
+            /// <summary>
+            /// 全てのグループを、代表元をキーとしたメンバーのリストとして取得します。
+            /// </summary>
+            public Dictionary<string, List<string>> GetGroups() {
+                var groups = new Dictionary<string, List<string>>();
+                foreach ( var name in _parent.Keys ) {
+                    string root = Find(name);
+                    if ( !groups.ContainsKey( root ) ) {
+                        groups[root] = new List<string>();
+                    }
+                    groups[root].Add( name );
+                }
+                return groups;
+            }
+        }
+
+        /// <summary>
+        /// ビデオのリストからアーティスト一覧を作成します。
+        /// 別名義を認識し、関連するアーティストをグループ化して表示します。
+        /// </summary>
+        public List<NewArtist> ConvertArtists( List<NewFile> videos, List<NewTag> tags ) {
+            Console.WriteLine( "Converting artist data..." );
+            try {
+                var newArtists = new List<NewArtist>();
+                int nextId = 1; // アーティストIDの開始番号
+
+                // --- パース処理 --- 
+                // 1. 全てのアーティスト名（別名含む）と、それに対応するビデオのリストを作成します。
+                // 2. 同時に、Union-Find構造を使ってアーティスト間の関連（グループ）を構築します。
+                var artistsWithVideos = new Dictionary<string, List<NewFile>>();
+                var uf = new UnionFind();
+
+                foreach ( var video in videos ) {
+                    if ( video.FileName != null ) {
+                        var match = Regex.Match(video.FileName, @"^[\[【](.*?)[\]】]");
+                        if ( match.Success ) {
+                            string artistsString = match.Groups[1].Value;
+                            // アーティスト名を抽出する正規表現: `Artist1(Alias1)` のような形式を一つの塊として捉えます。
+                            string pattern = @"\S+(\s*[\(（][^\)）]*[\)）])+|\S+";
+                            MatchCollection matches = Regex.Matches(artistsString, pattern);
+                            string[] extractedNames = matches.Cast<Match>().Select(m => m.Value).ToArray();
+
+                            foreach ( var nameGroup in extractedNames ) {
+                                // `Artist1(Alias1, Alias2)` のような形式をパースして、主名と別名のリストに分解します。
+                                var aliasMatch = Regex.Match(nameGroup, @"([^(（]+)[(（]([^)）]+)[)）]");
+                                var allNamesInGroup = new List<string>();
+
+                                if ( aliasMatch.Success ) {
+                                    string mainName = aliasMatch.Groups[1].Value.Trim();
+                                    allNamesInGroup.Add( mainName );
+                                    string[] aliases = aliasMatch.Groups[2].Value.Split(new[] { '、', ',' }, StringSplitOptions.RemoveEmptyEntries);
+                                    foreach ( var alias in aliases ) {
+                                        allNamesInGroup.Add( alias.Trim() );
+                                    }
+                                } else {
+                                    allNamesInGroup.Add( nameGroup.Trim() );
+                                }
+
+                                // パースした全ての名前をUnion-Find構造に追加し、ビデオと紐付けます。
+                                foreach ( var name in allNamesInGroup ) {
+                                    uf.Add( name );
+                                    if ( !artistsWithVideos.ContainsKey( name ) ) {
+                                        artistsWithVideos[name] = new List<NewFile>();
+                                    }
+                                    if ( !artistsWithVideos[name].Contains( video ) ) {
+                                        artistsWithVideos[name].Add( video );
+                                    }
+                                }
+
+                                // 同じ括弧内に含まれるアーティスト同士を同じグループとして統合します。
+                                if ( allNamesInGroup.Count > 1 ) {
+                                    for ( int i = 1; i < allNamesInGroup.Count; i++ ) {
+                                        uf.Union( allNamesInGroup[0], allNamesInGroup[i] );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // --- マージ処理 ---
+                // Union-Findで構築したグループ情報に基づき、各アーティストのビデオをグループの代表（root）に集約します。
+                var mergedArtists = new Dictionary<string, List<NewFile>>();
+                foreach ( var artistName in artistsWithVideos.Keys ) {
+                    string root = uf.Find(artistName);
+                    if ( !mergedArtists.ContainsKey( root ) ) {
+                        mergedArtists[root] = new List<NewFile>();
+                    }
+                    // ビデオリストをマージ（重複を排除しながら追加）
+                    foreach ( var video in artistsWithVideos[artistName] ) {
+                        if ( !mergedArtists[root].Contains( video ) ) {
+                            mergedArtists[root].Add( video );
+                        }
+                    }
+                }
+
+                // --- ArtistItem作成処理 ---
+                // 最終的なアーティストリストをUI向けに作成します。
+                var groups = uf.GetGroups();
+                // 表示順序：ビデオ数が多い順、次に名前の辞書順
+                var sortedRoots = mergedArtists.Keys.OrderByDescending(root => mergedArtists[root].Count).ThenBy(r => r);
+
+                foreach ( var rootName in sortedRoots ) {
+                    var groupMembers = groups.ContainsKey(rootName) ? groups[rootName] : new List<string> { rootName };
+
+                    // --- 主名の決定 ---
+                    // グループ内で最もビデオ数が多いアーティストを主名（表示名）とします。
+                    // ビデオ数が同じ場合は、名前の辞書順で決定します。
+                    string displayRoot = groupMembers
+                        .OrderByDescending(m => artistsWithVideos.ContainsKey(m) ? artistsWithVideos[m].Count : 0)
+                        .ThenBy(m => m, StringComparer.Ordinal)
+                        .FirstOrDefault() ?? rootName;
+
+                    var aliases = groupMembers.Where(m => m != displayRoot).OrderBy(a => a).ToList();
+
+                    string displayName = displayRoot;
+                    if ( aliases.Any() ) {
+                        displayName += $"({string.Join( "、", aliases )})";
+                    }
+
+                    // アーティスト名またはその別名義のいずれかがタグと一致すれば、お気に入りを設定します。
+                    var iSFavorite = tags.Any(t => t.TagName.Equals(displayRoot, StringComparison.OrdinalIgnoreCase) ||
+                                             aliases.Any(alias => alias.Equals(t.TagName, StringComparison.OrdinalIgnoreCase)));
+
+                    var newArtist = new NewArtist
+                    {
+                        Id = nextId++,
+                        Name = displayName,
+                        VideoIds = mergedArtists[rootName], // ビデオはグループ（rootName）のものを設定
+                        IsFavorite = iSFavorite,
+                    };
+
+                    newArtists.Add( newArtist );
+                }
+
+                // 最後に、「有名」タググループ配下のタグを削除します。
+                var famousTagGroup = tags.FirstOrDefault(a => a.TagName == "有名");
+                if ( famousTagGroup != null ) {
+                    // 「有名」タググループを削除
+                    tags.Remove( famousTagGroup );
+                    // その配下のタグも削除
+                    var famousTags = tags.Where(t => t.Parent == famousTagGroup.TagId).ToList();
+                    foreach ( var tag in famousTags ) {
+                        tags.Remove( tag );
+                    }
+                }
+
+                return newArtists;
+            } catch ( Exception ex ) {
+                // エラーが発生した場合は、アプリがクラッシュしないように例外を捕捉します。
+                System.Diagnostics.Debug.WriteLine( $"Error in CreateArtistList: {ex.Message}" );
+                return new List<NewArtist>();
+            }
         }
     }
 }

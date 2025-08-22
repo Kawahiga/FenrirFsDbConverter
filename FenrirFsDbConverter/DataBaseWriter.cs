@@ -34,6 +34,8 @@ namespace FenrirFsDbConverter {
                     DROP TABLE IF EXISTS Videos;
                     DROP TABLE IF EXISTS Tags;
                     DROP TABLE IF EXISTS VideoTags;
+                    DROP TABLE IF EXISTS Artists;  
+                    DROP TABLE IF EXISTS VideoArtists;
 
                     CREATE TABLE IF NOT EXISTS Videos (
                         FileID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,6 +64,19 @@ namespace FenrirFsDbConverter {
                         VideoId INTEGER,
                         TagId INTEGER,
                         PRIMARY KEY (VideoId, TagId)
+                    );
+
+                   CREATE TABLE IF NOT EXISTS Artists (
+                        ArtistID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        ArtistName TEXT NOT NULL,
+                        IsFavorite BOOLEAN DEFAULT 0,
+                        IconPath TEXT
+                    );
+
+                    CREATE TABLE IF NOT EXISTS VideoArtists (
+                        VideoId INTEGER NOT NULL,
+                        ArtistID INTEGER NOT NULL,
+                        PRIMARY KEY (VideoId, ArtistID)                      
                     );
                 ";
                 command.ExecuteNonQuery();
@@ -111,18 +126,9 @@ namespace FenrirFsDbConverter {
                     var rowsAffected = command.ExecuteNonQuery();
 
                     // DB更新後のIDを取得
-                    if ( rowsAffected > 0 ) {
-                        // 行が新規に挿入された
-                        command.CommandText = "SELECT last_insert_rowid()";
-                        command.Parameters.Clear();
-                        video.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
-                    } else {
-                        // 行が新規に挿入されなかった
-                        command.CommandText = "SELECT FileID FROM Videos WHERE FilePath = $filePath";
-                        command.Parameters.Clear();
-                        command.Parameters.AddWithValue( "$filePath", video.FilePath );
-                        video.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
-                    }
+                    command.CommandText = "SELECT last_insert_rowid()";
+                    command.Parameters.Clear();
+                    video.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
                 }
                 // トランザクションをコミット
                 transaction.Commit();
@@ -166,22 +172,6 @@ namespace FenrirFsDbConverter {
 
                     // コマンドを実行
                     command.ExecuteNonQuery();
-
-                    //// コマンドを実行
-                    //var rowsAffected = command.ExecuteNonQuery();
-                    //// DB更新後のIDを取得
-                    //if ( rowsAffected > 0 ) {
-                    //    // 行が新規に挿入された
-                    //    command.CommandText = "SELECT last_insert_rowid()";
-                    //    command.Parameters.Clear();
-                    //    tag.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
-                    //} else {
-                    //    // 行が新規に挿入されなかった
-                    //    command.CommandText = "SELECT TagID FROM Tags WHERE TagName = $tagName";
-                    //    command.Parameters.Clear();
-                    //    command.Parameters.AddWithValue( "$tagName", tag.TagName );
-                    //    tag.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
-                    //}
                 }
             }
             catch (Exception ex) {
@@ -239,6 +229,82 @@ namespace FenrirFsDbConverter {
             }
             catch ( Exception ex ) {
                 Console.WriteLine( $"\nError writing video tag data to destination DB: {ex.Message}" );
+            }
+        }
+
+        // アーティスト情報をDBに保存する
+        public void SaveArtists( List<NewArtist> artists ) {
+            Console.WriteLine( "Writing artist data to destination DB..." );
+            try {
+                using var connection = new SqliteConnection($"Data Source={_dbPath}");
+                connection.Open();
+                // パフォーマンス向上のためトランザクションを開始
+                using var transaction = connection.BeginTransaction();
+                totalItems = artists.Count;
+                lastPercentage = -1;
+                int processedItems = 0;
+                foreach ( var artist in artists ) {
+                    // 進捗状況を表示
+                    DisplayProgress( ++processedItems );
+                    var command = connection.CreateCommand();
+                    command.CommandText = @"
+                        INSERT OR IGNORE INTO Artists 
+                        (ArtistID, ArtistName, IsFavorite, IconPath) 
+                        VALUES 
+                        ($artistId, $artistName, $isFavorite, $iconPath)";
+                    command.Parameters.AddWithValue( "$artistId", artist.Id );
+                    command.Parameters.AddWithValue( "$artistName", artist.Name );
+                    command.Parameters.AddWithValue( "$isFavorite", artist.IsFavorite ? 1 : 0 );
+                    command.Parameters.AddWithValue( "$iconPath", artist.IconPath ?? string.Empty );
+                    // コマンドを実行
+                    command.ExecuteNonQuery();
+
+                    //// 更新後のIDを設定
+                    //command.CommandText = "SELECT last_insert_rowid()";
+                    //command.Parameters.Clear();
+                    //video.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
+                }
+                // トランザクションをコミット
+                transaction.Commit();
+            }
+            catch ( Exception ex ) {
+                Console.WriteLine( $"\nError writing artist data to destination DB: {ex.Message}" );
+            }
+        }
+
+        // ビデオとアーティストの関連情報をDBに保存する
+        public void SaveVideoArtists( List<NewArtist> artists ) {
+            Console.WriteLine( "Writing video artist data to destination DB..." );
+            try {
+                using var connection = new SqliteConnection( $"Data Source={_dbPath}" );
+                connection.Open();
+                // パフォーマンス向上のためトランザクションを開始
+                using var transaction = connection.BeginTransaction();
+                totalItems = artists.Count;
+                lastPercentage = -1;
+                int processedItems = 0;
+                var command = connection.CreateCommand();
+                foreach ( var videoArtist in artists ) {
+                    // 進捗状況を表示
+                    DisplayProgress( ++processedItems );
+
+                    foreach ( var videoId in videoArtist.VideoIds ) {
+                        // 新しいIDを取得
+                        if ( videoId.UpdatedId == 0 ) continue; // 更新後のIDがない場合はスキップ
+                        command.CommandText = @"
+                            INSERT OR IGNORE INTO VideoArtists (VideoId, ArtistID) 
+                            VALUES ($videoId, $artistId)";
+                        command.Parameters.Clear();
+                        command.Parameters.AddWithValue( "$videoId", videoId.UpdatedId );
+                        command.Parameters.AddWithValue( "$artistId", videoArtist.Id );
+                        command.ExecuteNonQuery();
+                    }
+                }
+                // トランザクションをコミット
+                transaction.Commit();
+            }
+            catch ( Exception ex ) {
+                Console.WriteLine( $"\nError writing video artist data to destination DB: {ex.Message}" );
             }
         }
 
