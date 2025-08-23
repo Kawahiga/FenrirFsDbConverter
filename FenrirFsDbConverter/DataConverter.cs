@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 // データ変換担当
 
 namespace FenrirFsDbConverter {
-    
+
     internal class DataConverter {
 
         private readonly string _hardCodePath;
@@ -33,11 +33,13 @@ namespace FenrirFsDbConverter {
 
                 var fileName = fenlirFile.DisplayFileName;
                 // ファイル名が空の場合はスキップ
-                if ( string.IsNullOrEmpty( fileName ) ) continue;
+                if ( string.IsNullOrEmpty( fileName ) )
+                    continue;
 
                 var filePath = fenlirFile.AliasTarget;
                 // ファイルパスが空の場合はハードコード
-                if ( string.IsNullOrEmpty( filePath ) ) filePath = string.Concat( _hardCodePath, fileName );
+                if ( string.IsNullOrEmpty( filePath ) )
+                    filePath = string.Concat( _hardCodePath, fileName );
                 var fileSize = fenlirFile.FileSize ?? 0; // ファイルサイズがnullの場合は0とする
                 // ファイルの書き込み日時をISO 8601形式で保存するため、DateTimeに変換
                 var dateTimeString = $"{fenlirFile.LastWriteDate}T{fenlirFile.LastWriteTime}";
@@ -77,7 +79,7 @@ namespace FenrirFsDbConverter {
             // 2. 固定タグを作成
             var allFilesTagId = nextId++;
             var untaggedTagId = nextId++;
-            
+
             newTags.Add( new NewTag { TagId = allFilesTagId, TagName = "全てのファイル", Parent = null, OrderInGroup = 0, IsGroup = 1, IsExpanded = 1, TagColor = "#FFFFFF", UpdatedId = 0 } );
             newTags.Add( new NewTag { TagId = untaggedTagId, TagName = "タグなし", Parent = allFilesTagId, OrderInGroup = 0, IsGroup = 1, IsExpanded = 1, TagColor = "#FFFFFF", UpdatedId = 0 } );
 
@@ -86,9 +88,11 @@ namespace FenrirFsDbConverter {
 
             // 4. 元のDBのラベルグループを「全てのファイル」配下のタグとして変換
             foreach ( var group in labelGroups ) {
-                if ( !group.LabelGroupID.HasValue || group.LabelGroupID == groupLessId ) continue;
+                if ( !group.LabelGroupID.HasValue || group.LabelGroupID == groupLessId )
+                    continue;
 
-                var newTag = new NewTag {
+                var newTag = new NewTag
+                {
                     TagId = nextId,
                     TagName = group.LabelGroupName,
                     TagColor = "#000000",
@@ -106,7 +110,8 @@ namespace FenrirFsDbConverter {
             // 4.5. グループの親子関係を解決 (追加)
             foreach ( var tag in newTags ) {
                 // 「全てのファイル」タグ自身は親を持たない
-                if ( tag.TagId == allFilesTagId ) continue; 
+                if ( tag.TagId == allFilesTagId )
+                    continue;
 
                 if ( tag.IsGroup == 1 && tag.Parent.HasValue && oldIdToNewIdMap.ContainsKey( tag.Parent.Value ) ) {
                     tag.Parent = oldIdToNewIdMap[tag.Parent.Value];
@@ -128,7 +133,8 @@ namespace FenrirFsDbConverter {
                 }
 
                 var labelColor = ConvertColorNameToHex( label.LabelColorName );
-                var newTag = new NewTag {
+                var newTag = new NewTag
+                {
                     TagId = label.LabelID ?? 0,
                     TagName = label.LabelName,
                     TagColor = labelColor,
@@ -188,7 +194,8 @@ namespace FenrirFsDbConverter {
 
         // ラベル色文字列をカラーコードに変換する
         private string ConvertColorNameToHex( string? colorName ) {
-            return colorName switch {
+            return colorName switch
+            {
                 "Red" => "#FF0000",
                 "Green" => "#00FF00",
                 "Blue" => "#0000FF",
@@ -397,23 +404,70 @@ namespace FenrirFsDbConverter {
                     newArtists.Add( newArtist );
                 }
 
-                // 最後に、「有名」タググループ配下のタグを削除します。
-                var famousTagGroup = tags.FirstOrDefault(a => a.TagName == "有名");
-                if ( famousTagGroup != null ) {
-                    // 「有名」タググループを削除
-                    tags.Remove( famousTagGroup );
-                    // その配下のタグも削除
-                    var famousTags = tags.Where(t => t.Parent == famousTagGroup.TagId).ToList();
-                    foreach ( var tag in famousTags ) {
-                        tags.Remove( tag );
-                    }
-                }
-
                 return newArtists;
             } catch ( Exception ex ) {
                 // エラーが発生した場合は、アプリがクラッシュしないように例外を捕捉します。
                 System.Diagnostics.Debug.WriteLine( $"Error in CreateArtistList: {ex.Message}" );
                 return new List<NewArtist>();
+            }
+        }
+
+        // アーティスト名と一致するタグを持つ動画をアーティストに紐づけます。
+        public void LinkVideoArtists( List<NewArtist> artists, List<NewVideoTag> videoTags, List<NewTag> tags, List<NewFile> videos ) {
+            Console.WriteLine( "Linking video artists..." );
+            // タグ名をキー、タグIDを値とする辞書を作成します。
+            var tagNameToId = tags.ToDictionary(t => t.TagName, t => t.TagId);
+            // VideoIdをキー、NewFileを値とする辞書を作成して検索を高速化します。
+            var videoIdToFile = videos.ToDictionary(v => v.Id, v => v);
+
+            foreach ( var artist in artists ) {
+                // アーティスト名とその別名義を分解します。
+                var nameMatch = Regex.Match(artist.Name, @"^([^(（]+)([(（](.*)[)）])?$");
+                if ( !nameMatch.Success )
+                    continue;
+                string mainName = nameMatch.Groups[1].Value.Trim();
+                var aliases = new List<string>();
+                if ( nameMatch.Groups[3].Success ) {
+                    aliases = nameMatch.Groups[3].Value.Split(new[] { '、', ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                                       .Select(a => a.Trim())
+                                                       .ToList();
+                }
+                // アーティスト名と別名義の両方でタグIDを検索します。
+                var relevantTagIds = new HashSet<int>();
+                if ( tagNameToId.ContainsKey(mainName) ) {
+                    relevantTagIds.Add( tagNameToId[mainName] );
+                }
+                foreach ( var alias in aliases ) {
+                    if ( tagNameToId.ContainsKey(alias) ) {
+                        relevantTagIds.Add( tagNameToId[alias] );
+                    }
+                }
+                // 見つかったタグIDに基づき、動画とアーティストの紐付けを行います。
+                foreach ( var videoTag in videoTags ) {
+                    if ( relevantTagIds.Contains(videoTag.TagId) ) {
+                        // 既に紐付けが存在しない場合のみ追加します。
+                        if ( !artist.VideoIds.Any( v => v.Id == videoTag.VideoId ) ) {
+                            // videosリストから完全なNewFileオブジェクトを検索します。
+                            if ( videoIdToFile.TryGetValue( videoTag.VideoId, out var videoToAdd ) ) {
+                                artist.VideoIds.Add( videoToAdd );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 指定タググループ配下のタグを削除します。(現状子までで、孫以下は消せない)
+        public void RemoveYUUMEITags( List<NewTag> tags, string tagGroupName ) {
+            var tagGroup = tags.FirstOrDefault(t => t.TagName == tagGroupName);
+            if ( tagGroup != null ) {
+                // タググループを削除
+                tags.Remove( tagGroup );
+                // その配下のタグも削除
+                var famousTags = tags.Where(t => t.Parent == tagGroup.TagId).ToList();
+                foreach ( var tag in famousTags ) {
+                    tags.Remove( tag );
+                }
             }
         }
     }

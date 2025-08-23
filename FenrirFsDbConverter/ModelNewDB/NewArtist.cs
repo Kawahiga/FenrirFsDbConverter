@@ -10,7 +10,7 @@ namespace FenrirFsDbConverter.ModelNewDB {
         // アーティストID (主キー)
         public int Id { get; set; } = 0;
 
-        // アーティストが出演する動画のIDリスト
+        // アーティストが出演する動画のリスト
         public List<NewFile> VideoIds { get; set; } = new List<NewFile>();
 
         // アーティスト名

@@ -28,15 +28,17 @@ public class Program {
         var newAppFiles = converter.ConvertFiles(fenrirFiles, fenrirLabeledFiles);
         var newAppTags = converter.ConvertTags(fenrirLabels, fenrirLabelGroups);
         var newAppVideoTag = converter.ConvertVideoTags(fenrirLabeledFiles);
-        var newArtists = converter.ConvertArtists(newAppFiles, newAppTags);
-        
+        var newAppArtists = converter.ConvertArtists(newAppFiles, newAppTags);
+        converter.LinkVideoArtists( newAppArtists, newAppVideoTag, newAppTags, newAppFiles );
+        converter.RemoveYUUMEITags( newAppTags, "有名" ); // "有名"タググループを削除
+
         // 3. 新しいDBにデータを書き込む
         var writer = new DataBaseWriter(destinationDbPath);
         writer.SaveFiles( newAppFiles );
         writer.SaveTags( newAppTags );
         writer.SaveVideoTags( newAppVideoTag, newAppFiles, newAppTags );
-        writer.SaveArtists( newArtists );
-        writer.SaveVideoArtists( newArtists );
+        writer.SaveArtists( newAppArtists );
+        writer.SaveVideoArtists( newAppArtists );
 
         Console.WriteLine( "Conversion completed successfully!" );
         Console.ReadLine();
