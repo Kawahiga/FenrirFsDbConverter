@@ -251,20 +251,20 @@ namespace FenrirFsDbConverter {
                     var command = connection.CreateCommand();
                     command.CommandText = @"
                         INSERT OR IGNORE INTO Artists 
-                        (ArtistID, ArtistName, IsFavorite, IconPath) 
+                        (ArtistName, IsFavorite, IconPath) 
                         VALUES 
-                        ($artistId, $artistName, $isFavorite, $iconPath)";
-                    command.Parameters.AddWithValue( "$artistId", artist.Id );
+                        ($artistName, $isFavorite, $iconPath)";
+                    //command.Parameters.AddWithValue( "$artistId", artist.Id );
                     command.Parameters.AddWithValue( "$artistName", artist.Name );
                     command.Parameters.AddWithValue( "$isFavorite", artist.IsFavorite ? 1 : 0 );
                     command.Parameters.AddWithValue( "$iconPath", artist.IconPath ?? string.Empty );
                     // コマンドを実行
                     command.ExecuteNonQuery();
 
-                    //// 更新後のIDを設定
-                    //command.CommandText = "SELECT last_insert_rowid()";
-                    //command.Parameters.Clear();
-                    //video.UpdatedId = Convert.ToInt32( command.ExecuteScalar() );
+                    // 更新後のIDを設定
+                    command.CommandText = "SELECT last_insert_rowid()";
+                    command.Parameters.Clear();
+                    artist.Id = Convert.ToInt32( command.ExecuteScalar() );
                 }
                 // トランザクションをコミット
                 transaction.Commit();

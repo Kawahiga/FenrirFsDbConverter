@@ -426,8 +426,15 @@ namespace FenrirFsDbConverter {
         // アーティスト名と一致するタグを持つ動画をアーティストに紐づけます。
         public void LinkVideoArtists( List<NewArtist> artists, List<NewVideoTag> videoTags, List<NewTag> tags, List<NewFile> videos ) {
             Console.WriteLine( "Linking video artists..." );
+
+            // 「有名」グループのタグのみを対象とする
+            var famousGroup = tags.FirstOrDefault(t => t.TagName == "有名" && t.IsGroup == 1);
+            if (famousGroup == null) return; // グループが見つからない場合は何もしない
+
+            var famousTags = tags.Where(t => t.Parent == famousGroup.TagId).ToList();
+
             // タグ名をキー、タグIDを値とする辞書を作成します。
-            var tagNameToId = tags.ToDictionary(t => t.TagName, t => t.TagId);
+            var tagNameToId = famousTags.ToDictionary(t => t.TagName, t => t.TagId);
             // VideoIdをキー、NewFileを値とする辞書を作成して検索を高速化します。
             var videoIdToFile = videos.ToDictionary(v => v.Id, v => v);
 
@@ -466,6 +473,15 @@ namespace FenrirFsDbConverter {
                     }
                 }
             }
+
+            // アーティストリストをビデオ数（降順）、名前（昇順）でソートします。
+            artists.Sort((a1, a2) => {
+                int videoCountCompare = a2.VideoIds.Count.CompareTo(a1.VideoIds.Count);
+                if (videoCountCompare != 0) {
+                    return videoCountCompare;
+                }
+                return string.Compare(a1.Name, a2.Name, StringComparison.Ordinal);
+            });
         }
 
         // 指定タググループ配下のタグを削除します。(現状子までで、孫以下は消せない)
