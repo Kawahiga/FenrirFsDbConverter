@@ -21,7 +21,7 @@ public class Program {
         var fenrirFiles = reader.ReadFiles();
         var fenrirLabels = reader.ReadLabels();
         var fenrirLabelGroups = reader.ReadLabelGroups();
-        var fenrirLabeledFiles = reader.ReadLabeledFiles();
+        var fenrirLabeledFiles = reader.ReadLabeledFiles(); 
         
         // 2. データを新しい形式に変換する
         var converter = new DataConverter( hardCodePath );

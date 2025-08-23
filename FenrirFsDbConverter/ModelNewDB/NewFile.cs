@@ -9,6 +9,7 @@ namespace FenrirFsDbConverter.ModelNewDB {
     internal class NewFile {
         public int Id { get; set; } // データベースの主キー
         public string? FileName { get; set; }
+        public string FileNameWithoutArtist { get; set; } = string.Empty; // アーティスト名を除いたファイル名
         public string? FilePath { get; set; }
         public long FileSize { get; set; }  // ファイルサイズ（バイト単位）
         public DateTime LastModified { get; set; }  // 最終更新日時（YYYY/MM/dd HH:mm:ss形式）

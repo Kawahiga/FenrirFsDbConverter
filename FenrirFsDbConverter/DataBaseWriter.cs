@@ -41,6 +41,7 @@ namespace FenrirFsDbConverter {
                         FileID INTEGER PRIMARY KEY AUTOINCREMENT,
                         FilePath TEXT NOT NULL UNIQUE,
                         FileName TEXT NOT NULL,
+                        FileNameWithoutArtist TEXT NOT NULL,
                         Extension TEXT DEFAULT '',
                         FileSize INTEGER DEFAULT 0,
                         LastModified TEXT,
@@ -107,13 +108,14 @@ namespace FenrirFsDbConverter {
                     var command = connection.CreateCommand();
                     command.CommandText = @"
                         INSERT OR IGNORE INTO Videos 
-                        (FilePath, FileName, Extension, FileSize, LastModified, Duration, LikeCount, ViewCount) 
+                        (FilePath, FileName, FileNameWithoutArtist, Extension, FileSize, LastModified, Duration, LikeCount, ViewCount) 
                         VALUES 
-                        ($filePath, $fileName, $extension, $fileSize, $lastModified, $duration, $like, $view)";
+                        ($filePath, $fileName, $fileNameWithiutArtist, $extension, $fileSize, $lastModified, $duration, $like, $view)";
 
 
                     command.Parameters.AddWithValue( "$filePath", video.FilePath );
                     command.Parameters.AddWithValue( "$fileName", video.FileName );
+                    command.Parameters.AddWithValue( "$fileNameWithiutArtist", video.FileNameWithoutArtist );
                     command.Parameters.AddWithValue( "$extension", video.Extension ?? string.Empty );
                     command.Parameters.AddWithValue( "$fileSize", video.FileSize );
                     // 日付は環境に依存しないISO 8601形式("o")で保存する

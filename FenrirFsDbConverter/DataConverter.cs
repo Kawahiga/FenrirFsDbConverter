@@ -35,6 +35,8 @@ namespace FenrirFsDbConverter {
                 // ファイル名が空の場合はスキップ
                 if ( string.IsNullOrEmpty( fileName ) )
                     continue;
+                // アーティスト名を除いたファイル名
+                var fileNameWithoutArtist = Regex.Replace( fileName, @"^[\[【].*?[\]】]", "" ).Trim();
 
                 var filePath = fenlirFile.AliasTarget;
                 // ファイルパスが空の場合はハードコード
@@ -52,6 +54,7 @@ namespace FenrirFsDbConverter {
                 {
                     Id = id,
                     FileName = fileName,
+                    FileNameWithoutArtist = fileNameWithoutArtist,
                     FilePath = filePath,
                     FileSize = fileSize,
                     LastModified = lastModified,
@@ -285,6 +288,39 @@ namespace FenrirFsDbConverter {
             }
         }
 
+        public static List<List<string>> ExtractArtistGroupsFromFile(string fileName) {
+            var artistGroups = new List<List<string>>();
+            if (string.IsNullOrEmpty(fileName)) {
+                return artistGroups;
+            }
+
+            var match = Regex.Match(fileName, @"^[\[【](.*?)[\]】]");
+            if (match.Success) {
+                string artistsString = match.Groups[1].Value;
+                string pattern = @"\S+(\s*[\(（][^\)）]*[\)）])+|\S+";
+                MatchCollection matches = Regex.Matches(artistsString, pattern);
+                string[] extractedNames = matches.Cast<Match>().Select(m => m.Value).ToArray();
+
+                foreach (var nameGroup in extractedNames) {
+                    var aliasMatch = Regex.Match(nameGroup, @"([^(（]+)[(（]([^)）]+)[)）]");
+                    var allNamesInGroup = new List<string>();
+
+                    if (aliasMatch.Success) {
+                        string mainName = aliasMatch.Groups[1].Value.Trim();
+                        allNamesInGroup.Add(mainName);
+                        string[] aliases = aliasMatch.Groups[2].Value.Split(new[] { '、', ',' }, StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var alias in aliases) {
+                            allNamesInGroup.Add(alias.Trim());
+                        }
+                    } else {
+                        allNamesInGroup.Add(nameGroup.Trim());
+                    }
+                    artistGroups.Add(allNamesInGroup);
+                }
+            }
+            return artistGroups;
+        }
+
         /// <summary>
         /// ビデオのリストからアーティスト一覧を作成します。
         /// 別名義を認識し、関連するアーティストをグループ化して表示します。
@@ -301,49 +337,24 @@ namespace FenrirFsDbConverter {
                 var artistsWithVideos = new Dictionary<string, List<NewFile>>();
                 var uf = new UnionFind();
 
-                foreach ( var video in videos ) {
-                    if ( video.FileName != null ) {
-                        var match = Regex.Match(video.FileName, @"^[\[【](.*?)[\]】]");
-                        if ( match.Success ) {
-                            string artistsString = match.Groups[1].Value;
-                            // アーティスト名を抽出する正規表現: `Artist1(Alias1)` のような形式を一つの塊として捉えます。
-                            string pattern = @"\S+(\s*[\(（][^\)）]*[\)）])+|\S+";
-                            MatchCollection matches = Regex.Matches(artistsString, pattern);
-                            string[] extractedNames = matches.Cast<Match>().Select(m => m.Value).ToArray();
+                foreach (var video in videos) {
+                    var artistGroups = ExtractArtistGroupsFromFile(video.FileName);
+                    foreach (var allNamesInGroup in artistGroups) {
+                        // パースした全ての名前をUnion-Find構造に追加し、ビデオと紐付けます。
+                        foreach (var name in allNamesInGroup) {
+                            uf.Add(name);
+                            if (!artistsWithVideos.ContainsKey(name)) {
+                                artistsWithVideos[name] = new List<NewFile>();
+                            }
+                            if (!artistsWithVideos[name].Contains(video)) {
+                                artistsWithVideos[name].Add(video);
+                            }
+                        }
 
-                            foreach ( var nameGroup in extractedNames ) {
-                                // `Artist1(Alias1, Alias2)` のような形式をパースして、主名と別名のリストに分解します。
-                                var aliasMatch = Regex.Match(nameGroup, @"([^(（]+)[(（]([^)）]+)[)）]");
-                                var allNamesInGroup = new List<string>();
-
-                                if ( aliasMatch.Success ) {
-                                    string mainName = aliasMatch.Groups[1].Value.Trim();
-                                    allNamesInGroup.Add( mainName );
-                                    string[] aliases = aliasMatch.Groups[2].Value.Split(new[] { '、', ',' }, StringSplitOptions.RemoveEmptyEntries);
-                                    foreach ( var alias in aliases ) {
-                                        allNamesInGroup.Add( alias.Trim() );
-                                    }
-                                } else {
-                                    allNamesInGroup.Add( nameGroup.Trim() );
-                                }
-
-                                // パースした全ての名前をUnion-Find構造に追加し、ビデオと紐付けます。
-                                foreach ( var name in allNamesInGroup ) {
-                                    uf.Add( name );
-                                    if ( !artistsWithVideos.ContainsKey( name ) ) {
-                                        artistsWithVideos[name] = new List<NewFile>();
-                                    }
-                                    if ( !artistsWithVideos[name].Contains( video ) ) {
-                                        artistsWithVideos[name].Add( video );
-                                    }
-                                }
-
-                                // 同じ括弧内に含まれるアーティスト同士を同じグループとして統合します。
-                                if ( allNamesInGroup.Count > 1 ) {
-                                    for ( int i = 1; i < allNamesInGroup.Count; i++ ) {
-                                        uf.Union( allNamesInGroup[0], allNamesInGroup[i] );
-                                    }
-                                }
+                        // 同じ括弧内に含まれるアーティスト同士を同じグループとして統合します。
+                        if (allNamesInGroup.Count > 1) {
+                            for (int i = 1; i < allNamesInGroup.Count; i++) {
+                                uf.Union(allNamesInGroup[0], allNamesInGroup[i]);
                             }
                         }
                     }
