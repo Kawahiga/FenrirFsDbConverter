@@ -497,5 +497,23 @@ namespace FenrirFsDbConverter {
                 }
             }
         }
+
+        // アーティストのLikeCountを更新します。
+        public void UpdateArtistLikeCounts( List<NewArtist> artists, List<NewTag> tags, List<NewVideoTag> videoTags ) {
+            Console.WriteLine( "Updating artist like counts..." );
+
+            // 「出した」タグのIDを取得
+            var dashitaTagId = tags.FirstOrDefault(t => t.TagName == "出した")?.TagId;
+            if ( !dashitaTagId.HasValue ) {
+                // 「出した」タグが見つからない場合は何もしない
+                return;
+            }
+
+            foreach ( var artist in artists ) {
+                var artistVideoIds = new HashSet<int>(artist.VideoIds.Select(v => v.Id));
+                int likeCount = videoTags.Count(vt => vt.TagId == dashitaTagId.Value && artistVideoIds.Contains(vt.VideoId));
+                artist.LikeCount = likeCount;
+            }
+        }
     }
 }

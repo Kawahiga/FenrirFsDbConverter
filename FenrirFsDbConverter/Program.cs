@@ -30,6 +30,7 @@ public class Program {
         var newAppVideoTag = converter.ConvertVideoTags(fenrirLabeledFiles);
         var newAppArtists = converter.ConvertArtists(newAppFiles, newAppTags);
         converter.LinkVideoArtists( newAppArtists, newAppVideoTag, newAppTags, newAppFiles );
+        converter.UpdateArtistLikeCounts( newAppArtists, newAppTags, newAppVideoTag );
         converter.RemoveYUUMEITags( newAppTags, "有名" ); // "有名"タググループを削除
 
         // 3. 新しいDBにデータを書き込む

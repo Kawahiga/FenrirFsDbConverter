@@ -19,6 +19,9 @@ namespace FenrirFsDbConverter.ModelNewDB {
         // お気に入り
         public bool IsFavorite { get; set; } = false;
 
+        // いいね数
+        public int LikeCount { get; set; } = 0;
+
         // アイコンパス (例: "icon.png")
         public string IconPath { get; set; } = string.Empty;
 

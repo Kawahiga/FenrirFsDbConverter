@@ -8,7 +8,7 @@ namespace FenrirFsDbConverter.ModelNewDB {
     internal class NewTag {
 
         public int TagId { get; set; } // タグID (主キー)
-        public string? TagName { get; set; } // タグ名
+        public string TagName { get; set; } = ""; // タグ名
         public string? TagColor { get; set; } // タグの色 (例: "Red", "Blue")
         public int? Parent { get; set; } // 親タグのID (NULLの場合はトップレベル)
         public int? OrderInGroup { get; set; } // グループ内での表示順

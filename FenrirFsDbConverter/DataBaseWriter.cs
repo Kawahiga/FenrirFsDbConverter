@@ -71,6 +71,7 @@ namespace FenrirFsDbConverter {
                         ArtistID INTEGER PRIMARY KEY AUTOINCREMENT,
                         ArtistName TEXT NOT NULL,
                         IsFavorite BOOLEAN DEFAULT 0,
+                        LikeCount INTEGER DEFAULT 0,
                         IconPath TEXT
                     );
 
@@ -251,12 +252,13 @@ namespace FenrirFsDbConverter {
                     var command = connection.CreateCommand();
                     command.CommandText = @"
                         INSERT OR IGNORE INTO Artists 
-                        (ArtistName, IsFavorite, IconPath) 
+                        (ArtistName, IsFavorite, LikeCount, IconPath) 
                         VALUES 
-                        ($artistName, $isFavorite, $iconPath)";
+                        ($artistName, $isFavorite, $likeCount, $iconPath)";
                     //command.Parameters.AddWithValue( "$artistId", artist.Id );
                     command.Parameters.AddWithValue( "$artistName", artist.Name );
                     command.Parameters.AddWithValue( "$isFavorite", artist.IsFavorite ? 1 : 0 );
+                    command.Parameters.AddWithValue( "$likeCount", artist.LikeCount );
                     command.Parameters.AddWithValue( "$iconPath", artist.IconPath ?? string.Empty );
                     // コマンドを実行
                     command.ExecuteNonQuery();
