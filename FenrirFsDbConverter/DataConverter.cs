@@ -410,6 +410,8 @@ namespace FenrirFsDbConverter {
                         Name = displayName,
                         VideoIds = mergedArtists[rootName], // ビデオはグループ（rootName）のものを設定
                         IsFavorite = iSFavorite,
+                        LikeCount = 0, // 後で更新
+                        IconPath = String.Empty,
                     };
 
                     newArtists.Add( newArtist );

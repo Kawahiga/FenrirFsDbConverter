@@ -39,6 +39,7 @@ namespace FenrirFsDbConverter {
 
                     CREATE TABLE IF NOT EXISTS Videos (
                         FileID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        FenrirFileID INTEGER,
                         FilePath TEXT NOT NULL UNIQUE,
                         FileName TEXT NOT NULL,
                         FileNameWithoutArtist TEXT NOT NULL,
@@ -109,11 +110,11 @@ namespace FenrirFsDbConverter {
                     var command = connection.CreateCommand();
                     command.CommandText = @"
                         INSERT OR IGNORE INTO Videos 
-                        (FilePath, FileName, FileNameWithoutArtist, Extension, FileSize, LastModified, Duration, LikeCount, ViewCount) 
+                        (FenrirFileID, FilePath, FileName, FileNameWithoutArtist, Extension, FileSize, LastModified, Duration, LikeCount, ViewCount) 
                         VALUES 
-                        ($filePath, $fileName, $fileNameWithiutArtist, $extension, $fileSize, $lastModified, $duration, $like, $view)";
+                        ($fenrirfileid, $filePath, $fileName, $fileNameWithiutArtist, $extension, $fileSize, $lastModified, $duration, $like, $view)";
 
-
+                    command.Parameters.AddWithValue( "$fenrirfileid", video.Id );
                     command.Parameters.AddWithValue( "$filePath", video.FilePath );
                     command.Parameters.AddWithValue( "$fileName", video.FileName );
                     command.Parameters.AddWithValue( "$fileNameWithiutArtist", video.FileNameWithoutArtist );
