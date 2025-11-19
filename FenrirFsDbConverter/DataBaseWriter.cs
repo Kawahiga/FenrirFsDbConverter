@@ -37,6 +37,13 @@ namespace FenrirFsDbConverter {
 
                 command.CommandText =
                 @"
+
+                    DROP TABLE IF EXISTS Videos;
+                    DROP TABLE IF EXISTS Tags;
+                    DROP TABLE IF EXISTS VideoTags;
+                    DROP TABLE IF EXISTS Artists;
+                    DROP TABLE IF EXISTS VideoArtists;
+
                     CREATE TABLE IF NOT EXISTS Videos (
                         FileID INTEGER PRIMARY KEY AUTOINCREMENT,
                         FenrirFileID INTEGER,
